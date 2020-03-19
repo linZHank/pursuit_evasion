@@ -33,11 +33,12 @@ class PEKineEnv(object):
             position = np.array([[-self.world_length/8,-self.world_length/2],[-self.world_length/8,self.world_length/2-self.world_length/10]]),
             dimension = np.array([[self.world_length/4,self.world_length/10],[self.world_length/4,self.world_length/10]])
         )
-        self.evader = dict(position=np.array([[self.world_length/7,0]]), velocity=np.zeros((1,2)))
+        self.evader = dict(position=np.array([[self.world_length/7,0]]), velocity=np.zeros((1,2)), trajectory=[])
         self.pursuers = dict(
             id = ['pursuer_'+str(i) for i in range(num_pursuers)],
             position = np.array([[-4*self.world_length/9, -4*self.world_length/9], [-4*self.world_length/9, 4*self.world_length/9]]),
-            velocity = np.zeros([num_pursuers,2])
+            velocity = np.zeros([num_pursuers,2]),
+            trajectory = []
         )
 
         self.step_count = 0
@@ -54,15 +55,21 @@ class PEKineEnv(object):
             info: 'coordinate type'
         """
         self.step_count = 0
+        # reset evader
         theta_e = random.uniform(-pi,pi)
         self.evader['position'] = np.array([[self.world_length/7*np.cos(theta_e),self.world_length/7*np.sin(theta_e)]])
         self.evader['velocity'] = np.zeros((1,2))
+        self.evader['trajectory'] = []
+        self.evader['trajectory'].append(self.evader['position'])
+        # reset pursuers
         pos_choice = np.array([-4*self.world_length/9, 4*self.world_length/9])
         self.pursuers['position'][0] = random.choice(pos_choice,2)
         self.pursuers['position'][1] = random.choice(pos_choice,2)
         while np.array_equal(self.pursuers['position'][0], self.pursuers['position'][1]):
             self.pursuers['position'][1] = random.choice(pos_choice,2)
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
+        self.pursuers['trajectory'] = []
+        self.pursuers['trajectory'].append(self.pursuers['position'])
         obs = dict(pursuers=self.pursuers, evader=self.evader)
         info = ''
 
@@ -72,7 +79,7 @@ class PEKineEnv(object):
         """
         Take a resolved velocity command
         Args:
-            action: array([v_x,v_y])
+            action: dict(name,actions)
         Returns:
             obs: {target_loc: array([x,y]), catcher_loc: array([x,y])
             reward:
