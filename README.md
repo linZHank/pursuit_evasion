@@ -10,6 +10,10 @@
 ## Test Script
 `python3 envs/pe_env_test.py`
 
-## Reset Function Test
-Video:  
+## Function Tests
+> Videos
+### Reset   
 [![pe_reset](/figs/pe_world.png)](https://www.youtube.com/embed/teVu3SRnujs)
+
+### Step
+[![pe_step](/figs/step_function.jpg)](https://youtu.be/UohNn-MbRnc)
