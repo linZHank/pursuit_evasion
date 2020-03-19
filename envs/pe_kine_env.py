@@ -28,14 +28,14 @@ class PEKineEnv(object):
         self.obstacle_circles = dict(
             names = ['circle_'+str(i) for i in range(1)],
             position = np.zeros((1,2)),
-            radius = np.array([self.world_length/8])
+            radius = np.array([2])
         )
         self.obstacle_rectangles = dict(
             names = ['rectangle_'+str(i) for i in range(2)],
-            position = np.array([[-self.world_length/8,-self.world_length/2],[-self.world_length/8,self.world_length/2-self.world_length/10]]),
-            dimension = np.array([[self.world_length/4,self.world_length/10],[self.world_length/4,self.world_length/10]])
+            position = np.array([[-2,-self.world_length/2],[-2,self.world_length/2-1.5]]),
+            dimension = np.array([[4,1.5],[4,1.5]])
         )
-        self.evader = dict(position=np.array([[self.world_length/7,0]]), velocity=np.zeros((1,2)), trajectory=[])
+        self.evader = dict(position=np.array([[3.,0]]), velocity=np.zeros((1,2)), trajectory=[])
         self.pursuers = dict(
             names = ['pursuer_'+str(i) for i in range(num_pursuers)],
             position = np.array([[-4*self.world_length/9, -4*self.world_length/9], [-4*self.world_length/9, 4*self.world_length/9]]),
@@ -59,7 +59,7 @@ class PEKineEnv(object):
         self.step_count = 0
         # reset evader
         theta_e = random.uniform(-pi,pi)
-        self.evader['position'] = np.array([[self.world_length/7*np.cos(theta_e),self.world_length/7*np.sin(theta_e)]])
+        self.evader['position'] = np.array([[3*np.cos(theta_e),3*np.sin(theta_e)]])
         self.evader['velocity'] = np.zeros((1,2))
         self.evader['trajectory'] = []
         self.evader['trajectory'].append(self.evader['position'])
@@ -126,10 +126,9 @@ class PEKineEnv(object):
         for ri in range(self.obstacle_rectangles['position'].shape[0]):
             obs_rect = plt.Rectangle((self.obstacle_rectangles['position'][ri]),self.obstacle_rectangles['dimension'][ri,0], self.obstacle_rectangles['dimension'][ri,1], color='grey')
             ax.add_patch(obs_rect)
-
         # draw pursuers and evader
-        plt.scatter(self.evader['position'][0,0], self.evader['position'][0,1], s=200, marker='*', color='crimson')
-        plt.scatter(self.pursuers['position'][:,0], self.pursuers['position'][:,1], s=200, marker='o', color='deepskyblue')
+        plt.scatter(self.evader['position'][0,0], self.evader['position'][0,1], s=400, marker='*', color='crimson')
+        plt.scatter(self.pursuers['position'][:,0], self.pursuers['position'][:,1], s=400, marker='o', color='deepskyblue')
         # set axis
         plt.axis(1.1/2*np.array([-self.world_length,self.world_length,-self.world_length,self.world_length]))
 
