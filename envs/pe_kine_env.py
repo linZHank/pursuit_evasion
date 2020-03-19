@@ -20,6 +20,7 @@ class PEKineEnv(object):
     """
     def __init__(self, num_pursuers=2):
         # fixed
+        self.num_pursuers = num_pursuers
         self.world_length = 10.
         self.max_steps = 1000
         self.rate = 100 # Hz
@@ -52,7 +53,20 @@ class PEKineEnv(object):
             obs: {target_loc: array([x,y]), catcher_loc: array([x,y], cabler_loc: array([x,y]...)
             info: 'coordinate type'
         """
-        pass
+        self.step_count = 0
+        theta_e = random.uniform(-pi,pi)
+        self.evader['position'] = np.array([[self.world_length/7*np.cos(theta_e),self.world_length/7*np.sin(theta_e)]])
+        self.evader['velocity'] = np.zeros((1,2))
+        pos_choice = np.array([-4*self.world_length/9, 4*self.world_length/9])
+        self.pursuers['position'][0] = random.choice(pos_choice,2)
+        self.pursuers['position'][1] = random.choice(pos_choice,2)
+        while np.array_equal(self.pursuers['position'][0], self.pursuers['position'][1]):
+            self.pursuers['position'][1] = random.choice(pos_choice,2)
+        self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
+        obs = dict(pursuers=self.pursuers, evader=self.evader)
+        info = ''
+
+        return obs, info
 
     def step(self, action):
         """
