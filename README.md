@@ -1,6 +1,13 @@
 # pursuit_evasion
 
+## Pre-requisites
+**Python3: ** Python2 should be OK, just casually tested
+**Numpy**
+**Matplotlib**
+
 ## Quick Start
+
+## Test Script
 `python3 envs/pe_env_test.py`
 
 ## Reset Function Test
