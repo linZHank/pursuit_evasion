@@ -13,7 +13,7 @@
 ## Function Tests
 > Videos
 ### Reset   
-[![pe_reset](/figs/pe_world.png)](https://www.youtube.com/embed/teVu3SRnujs)
+[![pe_reset](/figs/reset_function.jpg)](https://www.youtube.com/embed/teVu3SRnujs)
 
 ### Step
-[![pe_step](/figs/step_function.jpg)](https://youtu.be/UohNn-MbRnc)
+[![pe_step](/figs/step_function.jpg)](https://www.youtube.com/embed/UohNn-MbRnc)
