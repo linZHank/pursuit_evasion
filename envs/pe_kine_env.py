@@ -23,8 +23,8 @@ class PEKineEnv(object):
         self.rate = 30 # Hz
         self.num_pursuers = num_pursuers
         self.world_length = 10.
+        self.interfere_radius = 0.1 # effective catch within this range
         self.max_steps = self.rate*20 # 20s
-        # variable, we use polar coord to represent objects location
         self.obstacle_circles = dict(
             names = ['circle_'+str(i) for i in range(1)],
             position = np.zeros((1,2)),
@@ -35,18 +35,18 @@ class PEKineEnv(object):
             position = np.array([[-2,-self.world_length/2],[-2,self.world_length/2-1.5]]),
             dimension = np.array([[4,1.5],[4,1.5]])
         )
-        self.evader = dict(position=np.array([[3.,0]]), velocity=np.zeros((1,2)), trajectory=[])
+        self.pursuer_spawning_pool = np.array([-4,4])
+        # variables
+        self.step_count = 0
+        self.evaders = dict(names=['evaders_0'], position=np.zeros((1,2)), velocity=np.zeros((1,2)), trajectory=[])
         self.pursuers = dict(
             names = ['pursuer_'+str(i) for i in range(num_pursuers)],
-            position = np.array([[-4*self.world_length/9, -4*self.world_length/9], [-4*self.world_length/9, 4*self.world_length/9]]),
-            velocity = np.zeros([num_pursuers,2]),
+            position = np.zeros((num_pursuers,2)),
+            velocity = np.zeros((num_pursuers,2)),
             trajectory = []
         )
-
-        self.step_count = 0
-        #
+        # create figure
         fig, ax = plt.subplots(figsize=(16, 16))
-
 
     def reset(self):
         """
@@ -59,60 +59,61 @@ class PEKineEnv(object):
         self.step_count = 0
         # reset evader
         theta_e = random.uniform(-pi,pi)
-        self.evader['position'] = np.array([[3*np.cos(theta_e),3*np.sin(theta_e)]])
-        self.evader['velocity'] = np.zeros((1,2))
-        self.evader['trajectory'] = []
-        self.evader['trajectory'].append(self.evader['position'])
+        self.evaders['position'] = np.array([[3*np.cos(theta_e),3*np.sin(theta_e)]])
+        self.evaders['velocity'] = np.zeros((1,2))
+        self.evaders['trajectory'] = []
+        self.evaders['trajectory'].append(self.evaders['position'][0])
         # reset pursuers
-        pos_choice = np.array([-4*self.world_length/9, 4*self.world_length/9])
-        self.pursuers['position'][0] = random.choice(pos_choice,2)
-        self.pursuers['position'][1] = random.choice(pos_choice,2)
-        while np.array_equal(self.pursuers['position'][0], self.pursuers['position'][1]):
-            self.pursuers['position'][1] = random.choice(pos_choice,2)
+        for i in range(len(self.pursuers['names'])):
+            self.pursuers['position'][i] = random.choice(self.pursuer_spawning_pool,2)+random.normal(0,0.1,2)
+            while self.out_of_bound(self.pursuers['position'][i]):
+                self.pursuers['position'][i] = random.choice(self.pursuer_spawning_pool,2)+random.normal(0,0.1,2)
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'] = []
         self.pursuers['trajectory'].append(self.pursuers['position'])
-        obs = dict(evader=self.evader, pursuers=self.pursuers)
+        obs = dict(evaders=self.evaders, pursuers=self.pursuers)
         info = ''
 
         return obs, info
 
-    def step(self, action_evader, action_pursuers):
+    def step(self, action_evaders, action_pursuers):
         """
         Agents take velocity command
         Args:
-            action_evader: array([[v_x,v_y]])
+            action_evaders: array([[v_x,v_y]])
             action_pursuers: array([[v_x0,v_y0],[v_x1,v_y1],...])
         Returns:
-            obs: {evader, pursuers)
-            reward: +1 if pursuers succeeded
+            obs: {evaders, pursuers)
+            value: -|evaders-pursuers|
             done: bool
             info: 'whatever'
         """
         # set limitation for velocity commands
-        action_evader = np.clip(action_evader, -self.world_length/4, self.world_length/4)
+        action_evaders = np.clip(action_evaders, -self.world_length/4, self.world_length/4)
         action_pursuers = np.clip(action_pursuers, -self.world_length/4, self.world_length/4)
-        # step evader
-        if not self._collide_circles(self.evader['position'][0]+action_evader/self.rate) and not self._collide_rectangles(self.evader['position'][0]+action_evader/self.rate):
-            if not self._out_of_bound(self.evader['position'][0]+action_evader/self.rate): # detect obstacles collision
-                self.evader['position'][0] += action_evader/self.rate
-        self.evader['trajectory'].append(self.evader['position'])
+        # step evaders
+        # if not self._collide_circles(self.evaders['position'][0]+action_evaders/self.rate) and not self._collide_rectangles(self.evaders['position'][0]+action_evaders/self.rate):
+        if not self.obstacles_collision(self.evaders['position'][0]+action_evaders/self.rate):
+            if not self.out_of_bound(self.evaders['position'][0]+action_evaders/self.rate): # detect obstacles collision
+                self.evaders['position'][0] += action_evaders/self.rate
+        self.evaders['trajectory'].append(self.evaders['position'][0])
         # step pursuers
         for i in range(len(self.pursuers['names'])):
-            if not self._collide_circles(self.pursuers['position'][i]+action_pursuers[i]/self.rate) and not self._collide_rectangles(self.pursuers['position'][i]+action_pursuers[i]/self.rate):
-                if not self._out_of_bound(self.pursuers['position'][i]+action_pursuers[i]/self.rate): # detect obstacles collision
+            # if not self._collide_circles(self.pursuers['position'][i]+action_pursuers[i]/self.rate) and not self._collide_rectangles(self.pursuers['position'][i]+action_pursuers[i]/self.rate):
+            if not self.obstacles_collision(self.pursuers['position'][i]+action_pursuers[i]/self.rate):
+                if not self.out_of_bound(self.pursuers['position'][i]+action_pursuers[i]/self.rate): # detect obstacles collision
                     self.pursuers['position'][i] += action_pursuers[i]/self.rate
         self.pursuers['trajectory'].append(self.pursuers['position'])
         # collect results
         self.step_count += 1
-        obs = dict(evader=self.evader, pursuers=self.pursuers)
-        reward = 0
+        obs = dict(evaders=self.evaders, pursuers=self.pursuers)
+        value = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
         done = False
         if self.step_count >= self.max_steps:
             done = True
         info = ''
 
-        return obs, reward, done, info
+        return obs, value, done, info
 
     def render(self,pause=2):
         fig, ax = plt.gcf(), plt.gca()
@@ -126,15 +127,24 @@ class PEKineEnv(object):
         for ri in range(self.obstacle_rectangles['position'].shape[0]):
             obs_rect = plt.Rectangle((self.obstacle_rectangles['position'][ri]),self.obstacle_rectangles['dimension'][ri,0], self.obstacle_rectangles['dimension'][ri,1], color='grey')
             ax.add_patch(obs_rect)
-        # draw pursuers and evader
-        plt.scatter(self.evader['position'][0,0], self.evader['position'][0,1], s=400, marker='*', color='crimson')
-        plt.scatter(self.pursuers['position'][:,0], self.pursuers['position'][:,1], s=400, marker='o', color='deepskyblue')
+        # draw pursuers and evaders
+        plt.scatter(self.evaders['position'][:,0], self.evaders['position'][:,1], s=400, marker='*', color='crimson', linewidth=2)
+        plt.scatter(self.pursuers['position'][:,0], self.pursuers['position'][:,1], s=400, marker='o', color='deepskyblue', linewidth=2)
         # set axis
         plt.axis(1.1/2*np.array([-self.world_length,self.world_length,-self.world_length,self.world_length]))
 
         plt.show(block=False)
         plt.pause(pause)
         plt.clf()
+
+    # Helper Functions
+    # obstacles collision detection
+    def obstacles_collision(self, pos):
+        collision_flag = False
+        if self._collide_circles(pos) or self._collide_rectangles(pos):
+            collision_flag = True
+
+        return collision_flag
 
     # circle collision detection
     def _collide_circles(self, pos):
@@ -143,7 +153,6 @@ class PEKineEnv(object):
             if (pos[0]-self.obstacle_circles['position'][i,0])**2+(pos[1]-self.obstacle_circles['position'][i,1])**2 <= self.obstacle_circles['radius'][i]**2:
                 flag = True
         return flag
-
     # rectangle collision detection
     def _collide_rectangles(self, pos):
         flag = False
@@ -153,7 +162,7 @@ class PEKineEnv(object):
         return flag
 
     # out of bound detection
-    def _out_of_bound(self, pos):
+    def out_of_bound(self, pos):
         flag = False
         if np.absolute(pos[0])>=self.world_length/2 or np.absolute(pos[1])>=self.world_length/2:
             flag = True
