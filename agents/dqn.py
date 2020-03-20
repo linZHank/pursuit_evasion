@@ -46,15 +46,18 @@ class Memory:
 
 
 class DQNAgent:
-    def __init__(self,env):
+    def __init__(self, env):
         # fixed
         self.name = 'pursuer'
-        self.dim_state =
+        self.dim_state = 4
         self.actions = np.array([[-1,-1],[1,-1],[-1,1],[1,1]]) # [d_x,d_y]
-        # variables
+        self.env = env
+        # hyper-parameters
+        self.memory_cap = 100000
         self.epsilon = 1
         self.layer_sizes = [128,64]
         self.update_step = 8192
+        self.learning_rate = 0.001
         # Q(s,a;theta)
         assert len(self.layer_sizes) >= 1
         inputs = tf.keras.Input(shape=(self.dim_state,), name='state')
@@ -66,16 +69,13 @@ class DQNAgent:
         # clone active Q-net to create stable Q-net
         self.qnet_stable = tf.keras.models.clone_model(self.qnet_active)
         # optimizer
-        self.optimizer = tf.keras.optimizers.Adam(lr=params['learning_rate'])
+        self.optimizer = tf.keras.optimizers.Adam(lr=self.learning_rate)
         # loss function
         self.loss_fn = tf.keras.losses.MeanSquaredError()
         # metrics
         self.mse_metric = keras.metrics.MeanSquaredError()
         # init replay memory
-        self.replay_memory = Memory(memory_cap=params['memory_cap'])
-
-    def obs_to_state(self):
-        pass
+        self.replay_memory = Memory(memory_cap=self.memory_cap)
 
     def epsilon_greedy(self, state):
         """
