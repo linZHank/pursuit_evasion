@@ -1,7 +1,5 @@
 #!/usr/bin/python3
-"""
-Task environment for pursuit-evasion, kinematics case.
-"""
+
 from __future__ import absolute_import, division, print_function
 
 import numpy as np
@@ -16,7 +14,7 @@ import pdb
 
 class PEKineEnv(object):
     """
-    Pursuit-evasion kinematics env class
+    Pursuit-evasion kinematics env: N pursuers, 1 evader
     """
     def __init__(self, num_pursuers=2):
         # fixed
@@ -45,6 +43,7 @@ class PEKineEnv(object):
             velocity = np.zeros((num_pursuers,2)),
             trajectory = []
         )
+        self.values = np.zeros(num_pursuers) # distance from each pursuer to the evader
         # create figure
         fig, ax = plt.subplots(figsize=(16, 16))
 
@@ -71,8 +70,9 @@ class PEKineEnv(object):
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'] = []
         self.pursuers['trajectory'].append(self.pursuers['position'])
-        obs = dict(evaders=self.evaders, pursuers=self.pursuers)
+        obs = np.concatenate((self.pursuers['position'][0],self.evaders['position'][0]), axis=0)
         info = ''
+        self.values = np.zeros(self.num_pursuers) # distance from each pursuer to the evader
 
         return obs, info
 
@@ -84,10 +84,11 @@ class PEKineEnv(object):
             action_pursuers: array([[v_x0,v_y0],[v_x1,v_y1],...])
         Returns:
             obs: {evaders, pursuers)
-            value: -|evaders-pursuers|
+            reward: -|evaders-pursuers|
             done: bool
             info: 'whatever'
         """
+        dist_prev = self.values
         # set limitation for velocity commands
         action_evaders = np.clip(action_evaders, -self.world_length/4, self.world_length/4)
         action_pursuers = np.clip(action_pursuers, -self.world_length/4, self.world_length/4)
@@ -105,15 +106,17 @@ class PEKineEnv(object):
                     self.pursuers['position'][i] += action_pursuers[i]/self.rate
         self.pursuers['trajectory'].append(self.pursuers['position'])
         # collect results
+        self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
         self.step_count += 1
-        obs = dict(evaders=self.evaders, pursuers=self.pursuers)
-        value = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
+        obs = np.concatenate((self.pursuers['position'][0],self.evaders['position'][0]), axis=0)
+        dist_curr = self.values
+        reward = dist_curr - dist_prev
         done = False
         if self.step_count >= self.max_steps:
             done = True
         info = ''
 
-        return obs, value, done, info
+        return obs, reward, done, info
 
     def render(self,pause=2):
         fig, ax = plt.gcf(), plt.gca()
