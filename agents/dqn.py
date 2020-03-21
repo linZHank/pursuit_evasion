@@ -11,9 +11,7 @@ import numpy as np
 from numpy import random
 import pickle
 import tensorflow as tf
-import rospy
 
-from agent_utils import dqn_utils
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.layers import Dense
@@ -32,7 +30,7 @@ class Memory:
         if len(self.memory) >= self.memory_cap:
             self.memory.pop(random.randint(0, len(self.memory)-1))
         self.memory.append(experience)
-        rospy.logdebug("experience: {} stored to memory".format(experience))
+        print("experience: {} stored to memory".format(experience))
 
     def sample_batch(self, batch_size):
         # Select batch
@@ -40,7 +38,7 @@ class Memory:
             batch = random.sample(self.memory, len(self.memory))
         else:
             batch = random.sample(self.memory, batch_size)
-        rospy.logdebug("A batch of memories are sampled with size: {}".format(batch_size))
+        print("A batch of memories are sampled with size: {}".format(batch_size))
 
         return zip(*batch)
 
@@ -49,15 +47,19 @@ class DQNAgent:
     def __init__(self, env):
         # fixed
         self.name = 'pursuer'
+        self.env = env
         self.dim_state = 4
         self.actions = np.array([[-1,-1],[1,-1],[-1,1],[1,1]]) # [d_x,d_y]
-        self.env = env
         # hyper-parameters
         self.memory_cap = 100000
-        self.epsilon = 1
         self.layer_sizes = [128,64]
         self.update_step = 8192
         self.learning_rate = 0.001
+        self.init_eps = 1.
+        self.final_eps = 0.1
+        self.warmup_episodes = 2
+        # variables
+        self.epsilon = 1
         # Q(s,a;theta)
         assert len(self.layer_sizes) >= 1
         inputs = tf.keras.Input(shape=(self.dim_state,), name='state')
@@ -88,42 +90,33 @@ class DQNAgent:
             print("{} Take a random action!".format(self.name))
             return np.random.randint(len(self.actions))
 
-    def linear_decay_epsilon(self, episode, decay_period, init_eps, final_eps, warmup_episodes=1):
+    def linear_epsilon_decay(self, episode, decay_period):
         """
         Returns the current epsilon for the agent's epsilon-greedy policy. This follows the Nature DQN schedule of a linearly decaying epsilon (Mnih et al., 2015). The schedule is as follows:
             Begin at 1. until warmup_steps steps have been taken; then Linearly decay epsilon from 1. to final_eps in decay_period steps; and then Use epsilon from there on.
         Args:
-            decay_period: float, the period over which epsilon is decayed.
-            episode: int, the number of training steps completed so far.
-            warmup_episodes: int, the number of steps taken before epsilon is decayed.
-            final_eps: float, the final value to which to decay the epsilon parameter.
+            decay_period: int
+            episode: int
         Returns:
-            A float, the current epsilon value computed according to the schedule.
         """
-        episodes_left = decay_period + warmup_episodes - episode
-        bonus = (init_eps - final_eps) * episodes_left / decay_period
-        bonus = np.clip(bonus, 0., init_eps-final_eps)
-        self.epsilon = final_eps + bonus
+        episodes_left = decay_period + self.warmup_episodes - episode
+        bonus = (self.init_eps - self.final_eps) * episodes_left / decay_period
+        bonus = np.clip(bonus, 0., self.init_eps-self.final_eps)
+        self.epsilon = self.final_eps + bonus
 
-        return self.epsilon
-
-    def exponential_decay_epsilon(self, episode, decay_rate, init_eps, final_eps, warmup_episodes=64):
+    def exponential_epsilon_decay(self, episode, decay_rate):
         """
         Returns the current epsilon for the agent's epsilon-greedy policy:
             Begin at 1. until warmup_steps steps have been taken; then exponentially decay epsilon from 1. to final_eps; and then Use epsilon from there on.
         Args:
             episode: int, the number of training steps completed so far.
-            warmup_episodes: int, the number of steps taken before epsilon is decayed.
             decay_rate: exponential rate of epsilon decay
         Returns:
-            A float, the current epsilon value computed according to the schedule.
         """
-        if episode >= warmup_episodes:
+        if episode >= self.warmup_episodes:
             self.epsilon *= decay_rate
-        if self.epsilon <= final_eps:
-            self.epsilon = final_eps
-
-        return self.epsilon
+        if self.epsilon <= self.final_eps:
+            self.epsilon = self.final_eps
 
     def train(self, batch_size, gamma):
         # sample a minibatch from replay buffer

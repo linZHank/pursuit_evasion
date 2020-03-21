@@ -13,18 +13,18 @@ if __name__ == '__main__':
     env=PEKineEnv(num_pursuers=1)
     agent_p = DQNAgent(env=env)
     # train parameters
-    num_episodes = 500
+    num_episodes = 1000
     num_steps = env.max_steps
-    num_epochs = 1
+    num_epochs = 2
     episodic_returns = []
     sedimentary_returns = []
     ep = 0
-    agent_p.linear_decay_epsilon()
     # train
     while ep < num_episodes:
         done, total_reward = False, []
         obs, _ = env.reset()
         state = dqn_utils.obs_to_state(obs)
+        agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
             action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
             action_pursuers, i_ap = agent_p.epsilon_greedy(states)
