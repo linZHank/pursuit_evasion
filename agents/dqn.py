@@ -66,7 +66,7 @@ class DQNAgent:
         x = layers.Dense(self.layer_sizes[0], activation='relu')(inputs)
         for i in range(1,len(self.layer_sizes)):
             x = layers.Dense(self.layer_sizes[i], activation='relu')(x)
-        outputs = layers.Dense(len(self.actions))(x)
+        outputs = layers.Dense(self.actions.shape[0])(x)
         self.qnet_active = Model(inputs=inputs, outputs=outputs, name='qnet_model')
         # clone active Q-net to create stable Q-net
         self.qnet_stable = tf.keras.models.clone_model(self.qnet_active)
@@ -85,10 +85,13 @@ class DQNAgent:
         Else, return a random index
         """
         if random.rand() > self.epsilon:
-            return np.argmax(self.qnet_active(state.reshape(1,-1)))
+            index = np.argmax(self.qnet_active(state.reshape(1,-1)))
         else:
+            index = np.random.randint(self.actions.shape[0])
             print("{} Take a random action!".format(self.name))
-            return np.random.randint(len(self.actions))
+        action = self.actions[index]
+
+        return index, action
 
     def linear_epsilon_decay(self, episode, decay_period):
         """

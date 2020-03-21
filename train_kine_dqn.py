@@ -27,7 +27,7 @@ if __name__ == '__main__':
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
             action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
-            action_pursuers, i_ap = agent_p.epsilon_greedy(states)
+            ia, action_pursuers = agent_p.epsilon_greedy(state)
             obs, val, done, _ = env.step(action_evaders, action_pursuers)
             next_states = dqn_utils.obs_to_state(obs)
             rew, done = agent_p.adjust_reward(obs, val)
