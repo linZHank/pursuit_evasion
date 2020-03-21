@@ -22,17 +22,15 @@ if __name__ == '__main__':
     # train
     while ep < num_episodes:
         done, total_reward = False, []
-        obs, _ = env.reset()
-        state = dqn_utils.obs_to_state(obs)
+        state, _ = env.reset()
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
             action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
-            obs, val, done, _ = env.step(action_evaders, action_pursuers)
+            next_state, rew, done, _ = env.step(action_evaders, action_pursuers)
             next_state = dqn_utils.obs_to_state(obs)
-            rew, done = agent_p.adjust_reward(obs, val)
             # store transitions
-            agent_p.replay_memory.store(states, i_ap, rew, done, next_states)
+            agent_p.replay_memory.store(states, ia, rew, done, next_states)
             # train K epochs
             for i in range(num_epochs):
                 agent_p.train()

@@ -8,7 +8,7 @@ from __future__ import absolute_import, division, print_function
 import sys
 import os
 import numpy as np
-from numpy import random
+import random
 import pickle
 import tensorflow as tf
 
@@ -40,21 +40,22 @@ class Memory:
             batch = random.sample(self.memory, batch_size)
         print("A batch of memories are sampled with size: {}".format(batch_size))
 
-        return zip(*batch)
+        return list(zip(*batch))
 
 
 class DQNAgent:
-    def __init__(self, env):
+    def __init__(self):
         # fixed
         self.name = 'pursuer'
-        self.env = env
         self.dim_state = 4
         self.actions = np.array([[-1,-1],[1,-1],[-1,1],[1,1]]) # [d_x,d_y]
         # hyper-parameters
         self.memory_cap = 100000
-        self.layer_sizes = [128,64]
+        self.layer_sizes = [32,16]
         self.update_step = 8192
         self.learning_rate = 0.001
+        self.batch_size = 1024
+        self.gamma = 0.999
         self.init_eps = 1.
         self.final_eps = 0.1
         self.warmup_episodes = 2
@@ -84,7 +85,7 @@ class DQNAgent:
         If a random number(0,1) beats epsilon, return index of largest Q-value.
         Else, return a random index
         """
-        if random.rand() > self.epsilon:
+        if np.random.rand() > self.epsilon:
             index = np.argmax(self.qnet_active(state.reshape(1,-1)))
         else:
             index = np.random.randint(self.actions.shape[0])
@@ -121,15 +122,15 @@ class DQNAgent:
         if self.epsilon <= self.final_eps:
             self.epsilon = self.final_eps
 
-    def train(self, batch_size, gamma):
+    def train(self):
         # sample a minibatch from replay buffer
-        minibatch = self.replay_memory.sample_batch(batch_size)
+        minibatch = self.replay_memory.sample_batch(self.batch_size)
         (batch_states, batch_actions, batch_rewards, batch_done_flags, batch_next_states) = [np.array(minibatch[i]) for i in range(len(minibatch))]
         # open a GradientTape to record the operations run during the forward pass
         with tf.GradientTape() as tape:
             # run forward pass
-            pred_q = tf.math.reduce_sum(tf.cast(self.qnet_active(batch_states), tf.float32) * tf.one_hot(batch_actions, len(self.actions)), axis=-1)
-            target_q = batch_rewards + (1. - batch_done_flags) * gamma * tf.math.reduce_sum(self.qnet_stable(batch_next_states)*tf.one_hot(tf.math.argmax(self.qnet_active(batch_next_states),axis=1),len(self.actions)),axis=1)
+            pred_q = tf.math.reduce_sum(tf.cast(self.qnet_active(batch_states), tf.float32) * tf.one_hot(batch_actions, self.actions.shape[0]), axis=-1)
+            target_q = batch_rewards + (1. - batch_done_flags) * self.gamma * tf.math.reduce_sum(self.qnet_stable(batch_next_states)*tf.one_hot(tf.math.argmax(self.qnet_active(batch_next_states),axis=1), self.actions.shape[0]),axis=1)
             # compute loss value
             loss_value = self.loss_fn(y_true=target_q, y_pred=pred_q)
         # use the gradient tape to automatically retrieve the gradients of the trainable variables with respect to the loss.
@@ -140,7 +141,7 @@ class DQNAgent:
         self.mse_metric(target_q, pred_q)
         # display metrics
         train_mse = self.mse_metric.result()
-        print(bcolors.OKGREEN, "{} mse: {}".format(self.name, train_mse), bcolors.ENDC)
+        print("{} mse: {}".format(self.name, train_mse))
         # reset training metrics
         self.mse_metric.reset_states()
 

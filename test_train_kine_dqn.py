@@ -11,16 +11,31 @@ from agents.agent_utils import dqn_utils
 
 if __name__ == '__main__':
     env=PEKineEnv(num_pursuers=1)
-    agent_p = DQNAgent(env=env)
+    agent_p = DQNAgent()
     num_episodes = 20
+    num_steps = 20
+    num_epochs = 1
+    step_counter = 1
     for ep in range(num_episodes):
-        obs, _ = env.reset()
+        state, _ = env.reset()
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
-        print("epsilon: {}".format(agent_p.epsilon))
-        for st in range(15):
-            action_evader = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
-            ia, action_pursuers = agent_p.epsilon_greedy(obs)
-            obs_next, rew, done, _ = env.step(action_evader, action_pursuers)
-            print("next state: {}, reward: {}".format(obs_next, rew))
+        for st in range(num_steps):
+            action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
+            ia, action_pursuers = agent_p.epsilon_greedy(state)
+            next_state, rew, done, _ = env.step(action_evaders, action_pursuers)
             env.render(pause=1./env.rate)
-            obs = obs_next
+            state = next_state
+            # store transitions
+            agent_p.replay_memory.store([state, ia, rew[0], done, next_state])
+            # train K epochs
+            for _ in range(num_epochs)
+                agent_p.train()
+            if not step_counter % agent_p.update_step:
+                agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
+            # log step
+            print("episode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {}".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew))
+            env.render()
+            step_counter += 1
+            if done:
+                break
+        ep += 1
