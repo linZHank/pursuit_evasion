@@ -72,7 +72,7 @@ class PEKineEnv(object):
         self.pursuers['trajectory'].append(self.pursuers['position'])
         obs = np.concatenate((self.pursuers['position'][0],self.evaders['position'][0]), axis=0)
         info = ''
-        self.values = np.zeros(self.num_pursuers) # distance from each pursuer to the evader
+        self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1) # distance from each pursuer to the evader
 
         return obs, info
 
@@ -86,7 +86,7 @@ class PEKineEnv(object):
             obs: {evaders, pursuers)
             reward: -|evaders-pursuers|
             done: bool
-            info: 'whatever'
+            info: ''
         """
         dist_prev = self.values
         # set limitation for velocity commands
