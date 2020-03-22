@@ -11,10 +11,23 @@ from envs.pe_kine_env import PEKineEnv
 from agents.dqn import DQNAgent
 from agents.agent_utils import dqn_utils
 
+
+def cirluar_action(pos, vel):
+    """
+    generate action to enable agent moving in circle regarding to (0,0)
+    Args:
+        pos: array([x,y])
+        vel: tangential velocity
+    Returns:
+        action: array([v_x,v_y])
+    """
+    pass
+
+
 if __name__ == '__main__':
     env=PEKineEnv(num_pursuers=1)
     agent_p = DQNAgent()
-    model_path = sys.path[0]+'/saved_models/p1e1_kine/dqn/2020-03-22-01-47/agent_p/active_model-1200000.h5'
+    model_path = sys.path[0]+'/saved_models/p1e1_kine/dqn/2020-03-22-09-56/agent_p/active_model-480000.h5'
     agent_p.load_model(model_path)
     agent_p.epsilon = 0.01
 

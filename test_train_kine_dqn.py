@@ -14,8 +14,8 @@ from agents.agent_utils import dqn_utils
 if __name__ == '__main__':
     env=PEKineEnv(num_pursuers=1)
     agent_p = DQNAgent()
-    num_episodes = 20
-    num_steps = 20
+    num_episodes = 2
+    num_steps = 10
     num_epochs = 1
     step_counter = 1
     for ep in range(num_episodes):
@@ -36,7 +36,6 @@ if __name__ == '__main__':
                 agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
             # log step
             print("episode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {}".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew))
-            env.render()
             step_counter += 1
             if done:
                 break

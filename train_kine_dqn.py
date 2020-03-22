@@ -22,9 +22,9 @@ if __name__ == '__main__':
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
-    num_episodes = 400
+    num_episodes = 200
     num_steps = env.max_steps
-    num_epochs = 2
+    num_epochs = 1
     episodic_returns = []
     sedimentary_returns = []
     ep = 0
@@ -35,7 +35,8 @@ if __name__ == '__main__':
         state, _ = env.reset()
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
-            action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
+            # action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
+            action_evaders = np.zeros(2)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
             next_state, rew, done, _ = env.step(action_evaders, action_pursuers)
             # store transitions
@@ -47,7 +48,8 @@ if __name__ == '__main__':
                 agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
             # step summary
             print("episode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {}".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew[0]))
-            # env.render(pause=1./env.rate)
+            # render
+            env.render(pause=1./env.rate)
             total_reward.append(rew[0])
             step_counter += 1
             if done:
@@ -60,7 +62,7 @@ if __name__ == '__main__':
         sed_return = (sum(total_reward)+sum(episodic_returns))/(ep+1)
         sedimentary_returns.append(sed_return)
         ep += 1
-        print("episode: {} \n---\nepisodic_return: {}".format(ep+1, total_reward))
+        print("\n---\nepisode: {}, episodic_return: {}\n---\n".format(ep+1, total_reward))
     agent_p.save_model(model_dir)
 
     # plot ave_returns

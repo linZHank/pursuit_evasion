@@ -70,6 +70,7 @@ class DQNAgent:
             x = layers.Dense(self.layer_sizes[i], activation='relu')(x)
         outputs = layers.Dense(self.actions.shape[0])(x)
         self.qnet_active = Model(inputs=inputs, outputs=outputs, name='qnet_model')
+        self.qnet_active.summary()
         # clone active Q-net to create stable Q-net
         self.qnet_stable = tf.keras.models.clone_model(self.qnet_active)
         # optimizer
@@ -91,7 +92,7 @@ class DQNAgent:
         else:
             index = np.random.randint(self.actions.shape[0])
             print("{} Take a random action!".format(self.name))
-        action = self.actions[index]
+        action = self.actions[index].reshape(1,-1)
 
         return index, action
 
