@@ -2,6 +2,8 @@
 """
 Just a test script before full work process
 """
+import sys
+import os
 import numpy as np
 from numpy import random
 

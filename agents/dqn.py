@@ -51,14 +51,14 @@ class DQNAgent:
         self.actions = np.array([[-1,-1],[1,-1],[-1,1],[1,1]]) # [d_x,d_y]
         # hyper-parameters
         self.memory_cap = 100000
-        self.layer_sizes = [32,16]
+        self.layer_sizes = [64,32]
         self.update_step = 8192
         self.learning_rate = 0.001
-        self.batch_size = 1024
+        self.batch_size = 4096
         self.gamma = 0.999
         self.init_eps = 1.
         self.final_eps = 0.1
-        self.warmup_episodes = 2
+        self.warmup_episodes = 0
         # variables
         self.epsilon = 1
         self.epoch_counter = 0
@@ -160,12 +160,11 @@ class DQNAgent:
         self.qnet_stable.save(os.path.join(model_dir, 'stable_model-'+str(self.epoch_counter)+'.h5'))
         print("Q_net models saved at {}".format(model_dir))
 
-    def load_model(self, model_dir):
-        self.qnet_active = tf.keras.models.load_model(os.path.join(model_dir,'active_model.h5'))
-        self.qnet_stable = tf.keras.models.load_model(os.path.join(model_dir,'stable_model.h5'))
+    def load_model(self, model_path):
+        self.qnet_active = tf.keras.models.load_model(model_path)
+        self.qnet_stable = tf.keras.models.clone_model(self.qnet_active)
         print("Q-Net models loaded")
         self.qnet_active.summary()
-        self.qnet_stable.summary()
 
     def save_memory(self, memory_dir):
         # save transition buffer memory
