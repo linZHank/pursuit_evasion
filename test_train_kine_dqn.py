@@ -7,24 +7,25 @@ import os
 import numpy as np
 from numpy import random
 
+import utils
 from envs.pe_kine_env import PEKineEnv
 from agents.dqn import DQNAgent
-from agents.agent_utils import dqn_utils
 
 if __name__ == '__main__':
     env=PEKineEnv(num_pursuers=1)
     agent_p = DQNAgent()
-    num_episodes = 2
-    num_steps = 10
+    num_episodes = 10
+    num_steps = 100
     num_epochs = 1
     step_counter = 1
     for ep in range(num_episodes):
         state, _ = env.reset()
+        evader_speed = random.choice([-1,1])
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
-            action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
+            action_evaders = utils.cirluar_action(state[-2:],speed=evader_speed)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
-            next_state, rew, done, _ = env.step(action_evaders, action_pursuers)
+            next_state, rew, done, info = env.step(action_evaders, action_pursuers)
             env.render(pause=1./env.rate)
             state = next_state
             # store transitions
@@ -36,6 +37,7 @@ if __name__ == '__main__':
                 agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
             # log step
             print("episode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {}".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew))
+            print(info)
             step_counter += 1
             if done:
                 break

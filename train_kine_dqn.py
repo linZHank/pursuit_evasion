@@ -14,8 +14,6 @@ import matplotlib.pyplot as plt
 import utils
 from envs.pe_kine_env import PEKineEnv
 from agents.dqn import DQNAgent
-from agents.agent_utils import dqn_utils
-# from numpy import random
 
 
 if __name__ == '__main__':
@@ -36,12 +34,13 @@ if __name__ == '__main__':
     while ep < num_episodes:
         done, total_reward = False, []
         state, _ = env.reset()
+        evader_speed = random.choice([-1,1])
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
             # action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
-            action_evaders = np.zeros(2)
+            action_evaders = utils.cirluar_action(state[-2:],speed=evader_speed)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
-            next_state, rew, done, _ = env.step(action_evaders, action_pursuers)
+            next_state, rew, done, info = env.step(action_evaders, action_pursuers)
             # store transitions
             agent_p.replay_memory.store([state, ia, rew[0], done, next_state])
             # train K epochs
@@ -50,7 +49,7 @@ if __name__ == '__main__':
             if not step_counter % agent_p.update_step:
                 agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
             # step summary
-            print("episode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {}".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew[0]))
+            print("\n-\nepisode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {} \ninfo: {} \n-\n".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew[0], info))
             # render, comment out following line to maximize training speed
             # env.render(pause=1./env.rate)
             total_reward.append(rew[0])
@@ -65,7 +64,7 @@ if __name__ == '__main__':
         sed_return = (sum(total_reward)+sum(episodic_returns))/(ep+1)
         sedimentary_returns.append(sed_return)
         ep += 1
-        print("\n---\nepisode: {}, episodic_return: {}\n---\n".format(ep+1, total_reward))
+        print("\n---\nepisode: {}, episodic_return: {} \n---\n".format(ep+1, total_reward))
     agent_p.save_model(model_dir)
     t_end = time.time()
     print("Training duration: {}".format(time.strftime("%H:%M:%S", time.gmtime(t_end-t_start))))

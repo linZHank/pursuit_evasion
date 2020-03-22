@@ -35,7 +35,7 @@ class PEKineEnv(object):
         )
         self.pursuer_spawning_pool = np.array([-4,4])
         # variables
-        self.step_count = 0
+        self.step_counter = 0
         self.evaders = dict(names=['evaders_0'], position=np.zeros((1,2)), velocity=np.zeros((1,2)), trajectory=[])
         self.pursuers = dict(
             names = ['pursuer_'+str(i) for i in range(num_pursuers)],
@@ -55,7 +55,7 @@ class PEKineEnv(object):
             obs: {evader, pursuers)
             info: ''
         """
-        self.step_count = 0
+        self.step_counter = 0
         # reset evader
         theta_e = random.uniform(-pi,pi)
         self.evaders['position'] = np.array([[3*np.cos(theta_e),3*np.sin(theta_e)]])
@@ -70,7 +70,7 @@ class PEKineEnv(object):
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'] = []
         self.pursuers['trajectory'].append(self.pursuers['position'])
-        obs = np.concatenate((self.pursuers['position'][0],self.evaders['position'][0]), axis=0)
+        obs = np.concatenate((self.pursuers['position'].reshape(-1), self.evaders['position'][0]), axis=0)
         info = ''
         self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1) # distance from each pursuer to the evader
 
@@ -88,33 +88,43 @@ class PEKineEnv(object):
             done: bool
             info: ''
         """
+        reward, done, info = np.zeros(self.num_pursuers), False, ''
         dist_prev = self.values
         # set limitation for velocity commands
         action_evaders = np.clip(action_evaders, -self.world_length/4, self.world_length/4)
         action_pursuers = np.clip(action_pursuers, -self.world_length/4, self.world_length/4)
         # step evaders
-        # if not self._collide_circles(self.evaders['position'][0]+action_evaders/self.rate) and not self._collide_rectangles(self.evaders['position'][0]+action_evaders/self.rate):
         if not self.obstacles_collision(self.evaders['position'][0]+action_evaders/self.rate):
             if not self.out_of_bound(self.evaders['position'][0]+action_evaders/self.rate): # detect obstacles collision
                 self.evaders['position'][0] += action_evaders/self.rate
+            else:
+                info = "{} out of bound".format(self.evaders['names'][0])
+                done = True
+        else:
+            info = "{} collide obstacle".format(self.evaders['names'][0])
+            done = True
         self.evaders['trajectory'].append(self.evaders['position'][0])
         # step pursuers
         for i in range(len(self.pursuers['names'])):
-            # if not self._collide_circles(self.pursuers['position'][i]+action_pursuers[i]/self.rate) and not self._collide_rectangles(self.pursuers['position'][i]+action_pursuers[i]/self.rate):
             if not self.obstacles_collision(self.pursuers['position'][i]+action_pursuers[i]/self.rate):
                 if not self.out_of_bound(self.pursuers['position'][i]+action_pursuers[i]/self.rate): # detect obstacles collision
                     self.pursuers['position'][i] += action_pursuers[i]/self.rate
+                else:
+                    info = "{} out of bound".format(self.pursuers['names'][i])
+                    done = True
+            else:
+                info = "{} collide obstacle".format(self.pursuers['names'][i])
+                done = True
         self.pursuers['trajectory'].append(self.pursuers['position'])
-        # collect results
+        # update reward, done, info
         self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
-        self.step_count += 1
-        obs = np.concatenate((self.pursuers['position'][0],self.evaders['position'][0]), axis=0)
+        self.step_counter += 1
+        obs = np.concatenate((self.pursuers['position'].reshape(-1), self.evaders['position'][0]), axis=0)
         dist_curr = self.values
         reward = dist_curr - dist_prev
-        done = False
-        if self.step_count >= self.max_steps:
+        if self.step_counter >= self.max_steps:
+            info = "maximum step: {} reached".format(self.max_steps)
             done = True
-        info = ''
 
         return obs, reward, done, info
 

@@ -10,7 +10,6 @@ from numpy import random
 import utils
 from envs.pe_kine_env import PEKineEnv
 from agents.dqn import DQNAgent
-from agents.agent_utils import dqn_utils
 
 
 if __name__ == '__main__':
