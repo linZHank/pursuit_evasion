@@ -61,6 +61,7 @@ class DQNAgent:
         self.warmup_episodes = 2
         # variables
         self.epsilon = 1
+        self.epoch_counter = 0
         # Q(s,a;theta)
         assert len(self.layer_sizes) >= 1
         inputs = tf.keras.Input(shape=(self.dim_state,), name='state')
@@ -129,7 +130,8 @@ class DQNAgent:
         # open a GradientTape to record the operations run during the forward pass
         with tf.GradientTape() as tape:
             # run forward pass
-            pred_q = tf.math.reduce_sum(tf.cast(self.qnet_active(batch_states), tf.float32) * tf.one_hot(batch_actions, self.actions.shape[0]), axis=-1)
+            # pred_q = tf.math.reduce_sum(tf.cast(self.qnet_active(batch_states), tf.float32) * tf.one_hot(batch_actions, self.actions.shape[0]), axis=-1)
+            pred_q = tf.math.reduce_sum(self.qnet_active(batch_states) * tf.one_hot(batch_actions, self.actions.shape[0]), axis=-1)
             target_q = batch_rewards + (1. - batch_done_flags) * self.gamma * tf.math.reduce_sum(self.qnet_stable(batch_next_states)*tf.one_hot(tf.math.argmax(self.qnet_active(batch_next_states),axis=1), self.actions.shape[0]),axis=1)
             # compute loss value
             loss_value = self.loss_fn(y_true=target_q, y_pred=pred_q)
@@ -144,6 +146,8 @@ class DQNAgent:
         print("{} mse: {}".format(self.name, train_mse))
         # reset training metrics
         self.mse_metric.reset_states()
+        # epoch_counter ++
+        self.epoch_counter += 1
 
     def save_model(self, model_dir):
         self.qnet_active.summary()
@@ -152,8 +156,8 @@ class DQNAgent:
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
         # save model
-        self.qnet_active.save(os.path.join(model_dir,'active_model.h5'))
-        self.qnet_stable.save(os.path.join(model_dir,'stable_model.h5'))
+        self.qnet_active.save(os.path.join(model_dir, 'active_model-'+str(self.epoch_counter)+'.h5'))
+        self.qnet_stable.save(os.path.join(model_dir, 'stable_model-'+str(self.epoch_counter)+'.h5'))
         print("Q_net models saved at {}".format(model_dir))
 
     def load_model(self, model_dir):

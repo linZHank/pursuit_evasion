@@ -28,7 +28,7 @@ if __name__ == '__main__':
             # store transitions
             agent_p.replay_memory.store([state, ia, rew[0], done, next_state])
             # train K epochs
-            for _ in range(num_epochs)
+            for _ in range(num_epochs):
                 agent_p.train()
             if not step_counter % agent_p.update_step:
                 agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
@@ -38,4 +38,3 @@ if __name__ == '__main__':
             step_counter += 1
             if done:
                 break
-        ep += 1
