@@ -22,7 +22,7 @@ class PEKineEnv(object):
         self.num_pursuers = num_pursuers
         self.world_length = 10.
         self.interfere_radius = 0.1 # effective catch within this range
-        self.max_steps = self.rate*20 # 20s
+        self.max_steps = self.rate*30 # 30s
         self.obstacle_circles = dict(
             names = ['circle_'+str(i) for i in range(1)],
             position = np.zeros((1,2)),
@@ -117,14 +117,15 @@ class PEKineEnv(object):
                 done = True
         self.pursuers['trajectory'].append(self.pursuers['position'])
         # update reward, done, info
-        self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
-        self.step_counter += 1
         obs = np.concatenate((self.pursuers['position'].reshape(-1), self.evaders['position'][0]), axis=0)
-        dist_curr = -self.values
-        reward = dist_prev - dist_curr
+        self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
+        # dist_curr = -self.values
+        # reward = dist_prev - dist_curr
+        reward = self.values
         if self.step_counter >= self.max_steps:
             info = "maximum step: {} reached".format(self.max_steps)
             done = True
+        self.step_counter += 1
 
         return obs, reward, done, info
 

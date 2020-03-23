@@ -15,13 +15,13 @@ if __name__ == '__main__':
     env=PEKineEnv(num_pursuers=1)
     agent_p = DQNAgent()
     num_episodes = 10
-    num_steps = 100
+    num_steps = 400
     num_epochs = 1
     step_counter = 1
     for ep in range(num_episodes):
         state, _ = env.reset()
         # evader_speed = random.choice([-1,1])
-        agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
+        # agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
             # action_evaders = utils.cirluar_action(state[-2:],speed=evader_speed)
             action_evaders = np.zeros(2)

@@ -15,12 +15,12 @@ from agents.dqn import DQNAgent
 if __name__ == '__main__':
     env=PEKineEnv(num_pursuers=1)
     agent_p = DQNAgent()
-    model_path = sys.path[0]+'/saved_models/p1e1_kine/dqn/2020-03-22-18-14/agent_p/active_model-434885.h5'
+    model_path = sys.path[0]+'/saved_models/p1e1_kine/dqn/2020-03-23-10-52/agent_p/active_model-39702.h5'
     agent_p.load_model(model_path)
     agent_p.epsilon = 0.01
 
     num_episodes = 10
-    num_steps = 200 # env.max_steps
+    num_steps = 400 # env.max_steps
     for ep in range(num_episodes):
         done, total_reward = False, []
         state, _ = env.reset()

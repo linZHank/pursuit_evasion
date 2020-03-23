@@ -22,8 +22,8 @@ if __name__ == '__main__':
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
-    num_episodes = 10000
-    num_steps = 200 # env.max_steps
+    num_episodes = 2000
+    num_steps = env.max_steps-1 # ensure done only when collision occured
     num_epochs = 1
     episodic_returns = []
     sedimentary_returns = []
@@ -45,7 +45,7 @@ if __name__ == '__main__':
             if not info:
                 rew = rewards[0]
             else:
-                rew = -10./num_steps
+                rew = -10
             # store transitions
             agent_p.replay_memory.store([state, ia, rew, done, next_state])
             # train K epochs
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         sed_return = sum(episodic_returns)/(ep+1)
         sedimentary_returns.append(sed_return)
         ep += 1
-        print("\n---\nepisode: {}, episodic_return: {} \n---\n".format(ep+1, total_reward))
+        print("\n---\nepisode: {}, episodic_return: {} \n---\n".format(ep+1, sum(total_reward)))
     agent_p.save_model(model_dir)
     t_end = time.time()
     print("Training duration: {}".format(time.strftime("%H:%M:%S", time.gmtime(t_end-t_start))))
