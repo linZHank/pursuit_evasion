@@ -20,16 +20,21 @@ if __name__ == '__main__':
     step_counter = 1
     for ep in range(num_episodes):
         state, _ = env.reset()
-        evader_speed = random.choice([-1,1])
+        # evader_speed = random.choice([-1,1])
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
-            action_evaders = utils.cirluar_action(state[-2:],speed=evader_speed)
+            # action_evaders = utils.cirluar_action(state[-2:],speed=evader_speed)
+            action_evaders = np.zeros(2)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
-            next_state, rew, done, info = env.step(action_evaders, action_pursuers)
+            next_state, rewards, done, info = env.step(action_evaders, action_pursuers)
+            if not info:
+                rew = rewards[0]
+            else:
+                rew = -10./num_steps
             env.render(pause=1./env.rate)
             state = next_state
             # store transitions
-            agent_p.replay_memory.store([state, ia, rew[0], done, next_state])
+            agent_p.replay_memory.store([state, ia, rew, done, next_state])
             # train K epochs
             for _ in range(num_epochs):
                 agent_p.train()

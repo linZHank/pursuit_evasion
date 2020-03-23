@@ -18,7 +18,7 @@ class PEKineEnv(object):
     """
     def __init__(self, num_pursuers=2):
         # fixed
-        self.rate = 30 # Hz
+        self.rate = 20 # Hz
         self.num_pursuers = num_pursuers
         self.world_length = 10.
         self.interfere_radius = 0.1 # effective catch within this range
@@ -89,7 +89,7 @@ class PEKineEnv(object):
             info: ''
         """
         reward, done, info = np.zeros(self.num_pursuers), False, ''
-        dist_prev = self.values
+        dist_prev = -self.values
         # set limitation for velocity commands
         action_evaders = np.clip(action_evaders, -self.world_length/4, self.world_length/4)
         action_pursuers = np.clip(action_pursuers, -self.world_length/4, self.world_length/4)
@@ -120,8 +120,8 @@ class PEKineEnv(object):
         self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
         self.step_counter += 1
         obs = np.concatenate((self.pursuers['position'].reshape(-1), self.evaders['position'][0]), axis=0)
-        dist_curr = self.values
-        reward = dist_curr - dist_prev
+        dist_curr = -self.values
+        reward = dist_prev - dist_curr
         if self.step_counter >= self.max_steps:
             info = "maximum step: {} reached".format(self.max_steps)
             done = True

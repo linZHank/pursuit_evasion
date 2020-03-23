@@ -13,4 +13,4 @@ if __name__ == '__main__':
             action_pursuers = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=(env.num_pursuers,2))
             obs, rew, done, _ = env.step(action_evader,action_pursuers)
             # print("evader: {}, pursuers: {}, reward: {}".format(obs['evaders']['position'],obs['pursuers']['position'],rew[0]))
-            env.render(pause=1./env.rate)
+            env.render(pause=10)

@@ -48,17 +48,17 @@ class DQNAgent:
         # fixed
         self.name = 'pursuer'
         self.dim_state = 4
-        self.actions = np.array([[-1,-1],[1,-1],[-1,1],[1,1]]) # [d_x,d_y]
+        self.actions = np.array([[-2,-2],[2,-2],[-2,2],[2,2]]) # [d_x,d_y]
         # hyper-parameters
-        self.memory_cap = 100000
-        self.layer_sizes = [128]
+        self.memory_cap = 200000
+        self.layer_sizes = [128,128]
         self.update_step = 8192
         self.learning_rate = 0.001
         self.batch_size = 4096
-        self.gamma = 0.9
+        self.gamma = 0.95
         self.init_eps = 1.
         self.final_eps = 0.1
-        self.warmup_episodes = 0
+        self.warmup_episodes = 64
         # variables
         self.epsilon = 1
         self.epoch_counter = 0
@@ -158,7 +158,7 @@ class DQNAgent:
             os.makedirs(model_dir)
         # save model
         self.qnet_active.save(os.path.join(model_dir, 'active_model-'+str(self.epoch_counter)+'.h5'))
-        self.qnet_stable.save(os.path.join(model_dir, 'stable_model-'+str(self.epoch_counter)+'.h5'))
+        # self.qnet_stable.save(os.path.join(model_dir, 'stable_model-'+str(self.epoch_counter)+'.h5'))
         print("Q_net models saved at {}".format(model_dir))
 
     def load_model(self, model_path):
