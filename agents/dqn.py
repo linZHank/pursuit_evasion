@@ -48,17 +48,17 @@ class DQNAgent:
         # fixed
         self.name = 'pursuer'
         self.dim_state = 4
-        self.actions = np.array([[-2,-2],[2,-2],[-2,2],[2,2]]) # [d_x,d_y]
+        self.actions = np.array([[0,0], [-2,-2],[2,-2],[-2,2],[2,2]]) # [d_x,d_y]
         # hyper-parameters
         self.memory_cap = 200000
         self.layer_sizes = [64,32]
         self.update_step = 8192
-        self.learning_rate = 0.01
-        self.batch_size = 4096
+        self.learning_rate = 0.0003
+        self.batch_size = 1024
         self.gamma = 0.95
         self.init_eps = 1.
         self.final_eps = 0.1
-        self.warmup_episodes = 64
+        self.warmup_episodes = 32
         # variables
         self.epsilon = 1
         self.epoch_counter = 0

@@ -99,10 +99,8 @@ class PEKineEnv(object):
                 self.evaders['position'][0] += action_evaders/self.rate
             else:
                 info = "{} out of bound".format(self.evaders['names'][0])
-                done = True
         else:
             info = "{} collide obstacle".format(self.evaders['names'][0])
-            done = True
         self.evaders['trajectory'].append(self.evaders['position'][0])
         # step pursuers
         for i in range(len(self.pursuers['names'])):
@@ -111,16 +109,14 @@ class PEKineEnv(object):
                     self.pursuers['position'][i] += action_pursuers[i]/self.rate
                 else:
                     info = "{} out of bound".format(self.pursuers['names'][i])
-                    done = True
             else:
                 info = "{} collide obstacle".format(self.pursuers['names'][i])
-                done = True
         self.pursuers['trajectory'].append(self.pursuers['position'])
         # update reward, done, info
         obs = np.concatenate((self.pursuers['position'].reshape(-1), self.evaders['position'][0]), axis=0)
         self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
-        # dist_curr = -self.values
-        # reward = dist_prev - dist_curr
+        dist_curr = -self.values
+        reward = dist_prev - dist_curr
         reward = self.values
         if self.step_counter >= self.max_steps:
             info = "maximum step: {} reached".format(self.max_steps)

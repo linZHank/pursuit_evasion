@@ -11,9 +11,9 @@ from numpy import random
 import matplotlib
 import matplotlib.pyplot as plt
 
-import utils
 from envs.pe_kine_env import PEKineEnv
 from agents.dqn import DQNAgent
+from agents.agent_utils import dqn_utils
 
 
 if __name__ == '__main__':
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
-    num_episodes = 2000
+    num_episodes = 2048
     num_steps = env.max_steps-1 # ensure done only when collision occured
     num_epochs = 1
     episodic_returns = []
@@ -38,19 +38,21 @@ if __name__ == '__main__':
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
             # action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
-            # action_evaders = utils.cirluar_action(state[-2:],speed=evader_speed)
+            # action_evaders = dqn_utils.cirluar_action(state[-2:],speed=evader_speed)
             action_evaders = np.zeros(2)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
             next_state, rewards, done, info = env.step(action_evaders, action_pursuers)
-            if not info:
-                rew = rewards[0]
-            else:
-                rew = -10
+            rew, done = dqn_utils.adjust_reward(env, next_state, rewards[0], done, info)
+            # if not info:
+            #     rew = rewards[0]
+            # else:
+            #     rew = -10
             # store transitions
             agent_p.replay_memory.store([state, ia, rew, done, next_state])
             # train K epochs
-            for i in range(num_epochs):
-                agent_p.train()
+            if ep >= agent_p.warmup_episodes:
+                for i in range(num_epochs):
+                    agent_p.train()
             if not step_counter % agent_p.update_step:
                 agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
             # step summary
