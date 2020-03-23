@@ -17,3 +17,6 @@
 
 ### Step
 [![pe_step](/figs/step_function.jpg)](https://www.youtube.com/embed/UohNn-MbRnc)
+
+### DQN Training
+[![dqn_train](/figs/training.jpg)](https://www.youtube.com/embed/9IS8wZSyKbo)
