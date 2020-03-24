@@ -26,7 +26,7 @@ def circular_action(pos, speed):
     rot = np.array([[0,-1], [1,0]]) # rotation matrix
     vec_vel = np.dot(rot, pos)
     norm_vec_vel = vec_vel/np.linalg.norm(vec_vel)
-    action = speed * norm_vec_vel
+    action = speed*norm_vec_vel.reshape(1,-1)
 
     return action
 
@@ -40,15 +40,14 @@ def adjust_reward(env, num_steps, state, reward, done, info):
         done: boolean
     """
     success = False
-    if info: # collision
-        reward = -env.world_length
+    if env.pursuers['status'][0] == 'occluded' or env.pursuers['status'][0] == 'out':
+        reward = -100./num_steps
         done = True
+    elif env.pursuers['status'][0] == 'catching':
+        reward = env.world_length
+        done = True
+        success = True
     else:
-        if np.linalg.norm(state[:2]-state[-2:]) <= env.interfere_radius: # catch
-            reward = env.world_length
-            done = True
-            success = True
-        else:
-            reward = -1./num_steps
+        reward = -1./num_steps
 
     return reward, done, success

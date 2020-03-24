@@ -7,6 +7,7 @@ import os
 import time
 from datetime import datetime
 import numpy as np
+from numpy import pi
 from numpy import random
 import matplotlib
 import matplotlib.pyplot as plt
@@ -17,13 +18,15 @@ from agents.agent_utils import dqn_utils
 
 
 if __name__ == '__main__':
-    env=PEKineEnv(num_pursuers=1)
+    env=PEKineEnv()
     agent_p = DQNAgent()
+    agent_p.warmup_episodes = 0
+    agent_p.update_step = 100
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
-    num_episodes = 800
-    num_steps = env.max_steps-1 # ensure done only when collision occured
+    num_episodes = 20000
+    num_steps = 200
     num_epochs = 1
     episodic_returns = []
     sedimentary_returns = []
@@ -33,17 +36,21 @@ if __name__ == '__main__':
     t_start = time.time()
     # train
     while ep < num_episodes:
+        # specify evader's spawining position
+        theta_e = random.uniform(-pi,pi)
+        env.evaders_spawning_pool[0] = np.array([3*np.cos(theta_e),3*np.sin(theta_e)])
+        # evader_speed = random.uniform(-pi/2,pi/2)
+        # reset env
         done, total_reward = False, []
         state, _ = env.reset()
-        # evader_speed = random.choice([-1,1])
         agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
             # action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
-            # action_evaders = dqn_utils.cirluar_action(state[-2:],speed=evader_speed)
-            action_evaders = np.zeros(2)
+            # action_evaders = dqn_utils.cirluar_action(state[-4:-2],speed=evader_speed)
+            action_evaders = np.zeros((1,2))
             ia, action_pursuers = agent_p.epsilon_greedy(state)
-            next_state, rewards, done, info = env.step(action_evaders, action_pursuers)
-            rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, rewards[0], done, info)
+            next_state, reward, done, info = env.step(action_evaders, action_pursuers)
+            rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, reward, done, info)
             # store transitions
             agent_p.replay_memory.store([state, ia, rew, done, next_state])
             # train K epochs

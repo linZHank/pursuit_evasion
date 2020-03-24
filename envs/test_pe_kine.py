@@ -6,11 +6,12 @@ from numpy import pi
 
 
 if __name__ == '__main__':
-    env=PEKineEnv(num_evaders=3,num_pursuers=3)
+    env=PEKineEnv(num_evaders=12,num_pursuers=3)
     for ep in range(10):
         # specify evader's spawining position
-        theta_e = random.uniform(-pi,pi)
-        # env.evaders_spawning_pool = np.array([[3*np.cos(theta_e),3*np.sin(theta_e)]])
+        for i in range(env.num_evaders):
+            theta_e = random.uniform(-pi,pi)
+            env.evaders_spawning_pool[i] = np.array([3*np.cos(theta_e),3*np.sin(theta_e)])
         obs, _ = env.reset()
         print("\n---\n{}".format(obs))
         # env.render(pause=1)
