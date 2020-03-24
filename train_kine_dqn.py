@@ -22,7 +22,7 @@ if __name__ == '__main__':
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
-    num_episodes = 8000
+    num_episodes = 800
     num_steps = env.max_steps-1 # ensure done only when collision occured
     num_epochs = 1
     episodic_returns = []

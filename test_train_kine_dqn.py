@@ -20,12 +20,16 @@ if __name__ == '__main__':
     num_epochs = 1
     step_counter = 1
     for ep in range(num_episodes):
+        # specify evader's spawining position
+        theta_e = random.uniform(-pi,pi)
+        env.evaders_spawning_pool = np.array([[3*np.cos(theta_e),3*np.sin(theta_e)]])
+        # reset env and get state from it
         state, _ = env.reset()
-        # evader_speed = random.choice([-1,1])
+        evader_speed = random.choice([-1,1])
         # agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
         for st in range(num_steps):
-            # action_evaders = dqn_utils.cirluar_action(state[-2:],speed=evader_speed)
-            action_evaders = np.zeros(2)
+            action_evaders = dqn_utils.circular_action(state[-2:],speed=evader_speed)
+            # action_evaders = np.zeros(2)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
             next_state, rewards, done, info = env.step(action_evaders, action_pursuers)
             rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, rewards[0], done, info)

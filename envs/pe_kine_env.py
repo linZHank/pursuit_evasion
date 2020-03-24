@@ -35,17 +35,24 @@ class PEKineEnv(object):
             dimension = np.array([[4,1.5],[4,1.5]])
         )
         # variables
-        self.pursuers_spawning_pool = np.zeros([num_pursuers,2])
-        # self.evader_spawning_pool = np.array([-4,4])
+        self.pursuers_spawning_pool = np.zeros([num_pursuers, 2])
+        self.evaders_spawning_pool = np.zeros([num_evaders, 2])
         self.step_counter = 0
-        self.evaders = dict(names=['evaders_0'], position=np.zeros((1,2)), velocity=np.zeros((1,2)), trajectory=[])
         self.pursuers = dict(
             names = ['pursuer_'+str(i) for i in range(num_pursuers)],
             position = np.zeros((num_pursuers,2)),
             velocity = np.zeros((num_pursuers,2)),
-            trajectory = []
+            trajectory = [],
+            status = ['']*num_pursuers
         )
-        self.values = np.zeros(num_pursuers) # distance from each pursuer to the evader
+        self.evaders = dict(
+            names=['evaders'+str(i) for i in range(num_evaders)],
+            position=np.zeros((1,2)),
+            velocity=np.zeros((1,2)),
+            trajectory=[],
+            status = ['']*num_evaders
+        )
+        # self.values = np.zeros(num_pursuers) # distance from each pursuer to the evader
         # create figure
         fig, ax = plt.subplots(figsize=(16, 16))
 
@@ -58,25 +65,35 @@ class PEKineEnv(object):
             info: ''
         """
         self.step_counter = 0
-        # reset evader
-        theta_e = random.uniform(-pi,pi)
-        self.evaders['position'] = np.array([[3*np.cos(theta_e),3*np.sin(theta_e)]])
-        self.evaders['velocity'] = np.zeros((1,2))
-        self.evaders['trajectory'] = []
-        self.evaders['trajectory'].append(self.evaders['position'][0])
         # reset pursuers
-        for i in range(len(self.pursuers['names'])):
+        for i in range(self.num_pursuers):
             self.pursuers['position'][i] = self.pursuers_spawning_pool[i]
             while self.out_of_bound(self.pursuers['position'][i]) or self.obstacles_collision(self.pursuers['position'][i]):
                 self.pursuers['position'][i] = random.uniform(-self.world_length/2, self.world_length/2, 2)
-            # while self.out_of_bound(self.pursuers['position'][i]):
-            #     self.pursuers['position'][i] = random.choice(self.pursuer_spawning_pool,2)+random.normal(0,0.1,2)
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'] = []
         self.pursuers['trajectory'].append(self.pursuers['position'])
-        obs = np.concatenate((self.pursuers['position'].reshape(-1), self.evaders['position'][0]), axis=0)
+        self.pursuers['status'] = ['pursuing']*self.num_pursuers
+        # reset evader
+        for i in range(self.num_evaders):
+            self.evaders['position'][i] = self.evaders_spawning_pool[i]
+            while self.out_of_bound(self.evaders['position'][i]) or self.obstacles_collision(self.evaders['position'][i]):
+                self.evaders['position'][i] = random.uniform(-self.world_length/2, self.world_length/2, 2)
+        self.evaders['velocity'] = np.zeros((1,2))
+        self.evaders['trajectory'] = []
+        self.evaders['trajectory'].append(self.evaders['position'][0])
+        self.evaders['status'] = ['evading']*self.num_evaders
+        # create obs and info
+        obs = np.concatenate(
+            (
+                self.pursuers['position'].reshape(-1),
+                self.pursuers['velocity'].reshape(-1),
+                self.evaders['position'].reshape(-1),
+                self.evaders['velocity'].reshape(-1)
+            ), axis=0
+        )
         info = ''
-        self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1) # distance from each pursuer to the evader
+        # self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1) # distance from each pursuer to the evader
 
         return obs, info
 

@@ -15,7 +15,7 @@ from agents.agent_utils import dqn_utils
 if __name__ == '__main__':
     env=PEKineEnv(num_pursuers=1)
     agent_p = DQNAgent()
-    model_path = sys.path[0]+'/saved_models/p1e1_kine/dqn/2020-03-23-15-54/agent_p/active_model-505540.h5'
+    model_path = sys.path[0]+'/saved_models/p1e1_kine/dqn/2020-03-24-00-32/agent_p/active_model-384191.h5'
     agent_p.load_model(model_path)
     agent_p.epsilon = 0.01
 
