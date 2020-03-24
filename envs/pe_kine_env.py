@@ -16,10 +16,11 @@ class PEKineEnv(object):
     """
     Pursuit-evasion kinematics env: N pursuers, 1 evader
     """
-    def __init__(self, num_pursuers=2):
+    def __init__(self, num_pursuers=1, num_evaders=1):
         # fixed
         self.rate = 20 # Hz
         self.num_pursuers = num_pursuers
+        self.num_evaders = num_evaders
         self.world_length = 10.
         self.interfere_radius = 0.1 # effective catch within this range
         self.max_steps = self.rate*30 # 30s
@@ -33,8 +34,9 @@ class PEKineEnv(object):
             position = np.array([[-2,-self.world_length/2],[-2,self.world_length/2-1.5]]),
             dimension = np.array([[4,1.5],[4,1.5]])
         )
-        self.pursuer_spawning_pool = np.array([-4,4])
         # variables
+        self.pursuers_spawning_pool = np.zeros([num_pursuers,2])
+        # self.evader_spawning_pool = np.array([-4,4])
         self.step_counter = 0
         self.evaders = dict(names=['evaders_0'], position=np.zeros((1,2)), velocity=np.zeros((1,2)), trajectory=[])
         self.pursuers = dict(
@@ -64,9 +66,11 @@ class PEKineEnv(object):
         self.evaders['trajectory'].append(self.evaders['position'][0])
         # reset pursuers
         for i in range(len(self.pursuers['names'])):
-            self.pursuers['position'][i] = random.choice(self.pursuer_spawning_pool,2)+random.normal(0,0.1,2)
-            while self.out_of_bound(self.pursuers['position'][i]):
-                self.pursuers['position'][i] = random.choice(self.pursuer_spawning_pool,2)+random.normal(0,0.1,2)
+            self.pursuers['position'][i] = self.pursuers_spawning_pool[i]
+            while self.out_of_bound(self.pursuers['position'][i]) or self.obstacles_collision(self.pursuers['position'][i]):
+                self.pursuers['position'][i] = random.uniform(-self.world_length/2, self.world_length/2, 2)
+            # while self.out_of_bound(self.pursuers['position'][i]):
+            #     self.pursuers['position'][i] = random.choice(self.pursuer_spawning_pool,2)+random.normal(0,0.1,2)
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'] = []
         self.pursuers['trajectory'].append(self.pursuers['position'])
@@ -117,7 +121,6 @@ class PEKineEnv(object):
         self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
         dist_curr = -self.values
         reward = dist_prev - dist_curr
-        reward = self.values
         if self.step_counter >= self.max_steps:
             info = "maximum step: {} reached".format(self.max_steps)
             done = True

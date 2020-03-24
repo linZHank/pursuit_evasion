@@ -14,7 +14,7 @@ def obs_to_state(obs):
 
     return state
 
-def cirluar_action(pos, speed):
+def circular_action(pos, speed):
     """
     Generate action to enable agent moving in circle regarding to (0,0)
     Args:
@@ -30,7 +30,7 @@ def cirluar_action(pos, speed):
 
     return action
 
-def adjust_reward(env, state, reward, done, info):
+def adjust_reward(env, num_steps, state, reward, done, info):
     """
     Args:
         env: env object
@@ -39,12 +39,16 @@ def adjust_reward(env, state, reward, done, info):
         reward: scalar
         done: boolean
     """
-    if info:
+    success = False
+    if info: # collision
         reward = -env.world_length
         done = True
     else:
-        if np.linalg.norm(state[:2]-state[-2:]) <= env.interfere_radius:
+        if np.linalg.norm(state[:2]-state[-2:]) <= env.interfere_radius: # catch
             reward = env.world_length
             done = True
+            success = True
+        else:
+            reward = -1./num_steps
 
-    return reward, done
+    return reward, done, success

@@ -22,13 +22,14 @@ if __name__ == '__main__':
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
-    num_episodes = 2048
+    num_episodes = 8000
     num_steps = env.max_steps-1 # ensure done only when collision occured
     num_epochs = 1
     episodic_returns = []
     sedimentary_returns = []
     ep = 0
     step_counter = 1
+    success_counter = 0
     t_start = time.time()
     # train
     while ep < num_episodes:
@@ -42,11 +43,7 @@ if __name__ == '__main__':
             action_evaders = np.zeros(2)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
             next_state, rewards, done, info = env.step(action_evaders, action_pursuers)
-            rew, done = dqn_utils.adjust_reward(env, next_state, rewards[0], done, info)
-            # if not info:
-            #     rew = rewards[0]
-            # else:
-            #     rew = -10
+            rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, rewards[0], done, info)
             # store transitions
             agent_p.replay_memory.store([state, ia, rew, done, next_state])
             # train K epochs
@@ -56,12 +53,14 @@ if __name__ == '__main__':
             if not step_counter % agent_p.update_step:
                 agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
             # step summary
-            print("\n-\nepisode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {} \ninfo: {} \n-\n".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew, info))
+            print("\n-\nepisode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {} \ninfo: {}, succeeded: {}\n-\n".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew, info, success_counter))
             # render, comment out following line to maximize training speed
             # env.render(pause=1./env.rate)
             total_reward.append(rew)
             step_counter += 1
             if done:
+                if success:
+                    success_counter += 1
                 break
         # save model
         if not (ep+1) % 1000:
@@ -71,7 +70,7 @@ if __name__ == '__main__':
         sed_return = sum(episodic_returns)/(ep+1)
         sedimentary_returns.append(sed_return)
         ep += 1
-        print("\n---\nepisode: {}, episodic_return: {} \n---\n".format(ep+1, sum(total_reward)))
+        print("\n---\nepisode: {}, episodic_return: {}\n---\n".format(ep+1, sum(total_reward)))
     agent_p.save_model(model_dir)
     t_end = time.time()
     print("Training duration: {}".format(time.strftime("%H:%M:%S", time.gmtime(t_end-t_start))))

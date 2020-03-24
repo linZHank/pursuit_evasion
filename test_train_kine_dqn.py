@@ -28,7 +28,7 @@ if __name__ == '__main__':
             action_evaders = np.zeros(2)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
             next_state, rewards, done, info = env.step(action_evaders, action_pursuers)
-            rew, done = dqn_utils.adjust_reward(env, next_state, rewards[0], done, info)
+            rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, rewards[0], done, info)
             env.render(pause=1./env.rate)
             state = next_state
             # store transitions
@@ -43,4 +43,6 @@ if __name__ == '__main__':
             print(info)
             step_counter += 1
             if done:
+                if success:
+                    success_counter += 1
                 break
