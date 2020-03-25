@@ -38,7 +38,7 @@ if __name__ == '__main__':
             # action_evaders = np.zeros(2)
             ia, action_pursuers = agent_p.epsilon_greedy(state)
             next_state, reward, done, info = env.step(action_evaders, action_pursuers)
-            rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, reward, done, info)
+            rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, reward, done)
             env.render(pause=1./env.rate)
             # store transitions
             agent_p.replay_memory.store([state, ia, rew, done, next_state])

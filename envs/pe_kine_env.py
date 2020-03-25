@@ -92,8 +92,8 @@ class PEKineEnv(object):
         #         self.evaders['velocity'].reshape(-1)
         #     ), axis=0
         # )
-        # info = ''
 
+        info = ''
         obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
 
         return obs, info

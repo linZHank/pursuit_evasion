@@ -30,7 +30,7 @@ def circular_action(pos, speed):
 
     return action
 
-def adjust_reward(env, num_steps, state, reward, done, info):
+def adjust_reward(env, num_steps, state, reward, done):
     """
     Args:
         env: env object

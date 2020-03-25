@@ -51,7 +51,7 @@ class DQNAgent:
         self.actions = np.array([[0,2],[0,-2],[-2,0],[2,0]]) # [d_x,d_y]
         # hyper-parameters
         self.memory_cap = 500000
-        self.layer_sizes = [128,128]
+        self.layer_sizes = [256,128]
         self.update_step = 4000
         self.learning_rate = 0.001
         self.batch_size = 1024
