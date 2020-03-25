@@ -12,7 +12,6 @@ from envs.pe_kine_env import PEKineEnv
 from agents.dqn import DQNAgent
 from agents.agent_utils import dqn_utils
 
-
 if __name__ == '__main__':
     env=PEKineEnv()
     agent_p = DQNAgent()
@@ -41,7 +40,6 @@ if __name__ == '__main__':
             next_state, reward, done, info = env.step(action_evaders, action_pursuers)
             rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, reward, done, info)
             env.render(pause=1./env.rate)
-            state = next_state
             # store transitions
             agent_p.replay_memory.store([state, ia, rew, done, next_state])
             # train K epochs
@@ -52,6 +50,7 @@ if __name__ == '__main__':
             # log step
             print("\n-\nepisode: {}, step: {}, epsilon: {} \nstate: {} \naction: {}->{} \nnext_state: {} \nreward: {} \ninfo: {}, succeeded: {}\n-\n".format(ep+1, st+1, agent_p.epsilon, state, ia, action_pursuers, next_state, rew, info, success_counter))
             step_counter += 1
+            state = next_state
             if done:
                 if success:
                     success_counter += 1

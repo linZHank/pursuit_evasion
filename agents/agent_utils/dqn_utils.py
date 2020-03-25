@@ -41,7 +41,7 @@ def adjust_reward(env, num_steps, state, reward, done, info):
     """
     success = False
     if env.pursuers['status'][0] == 'occluded' or env.pursuers['status'][0] == 'out':
-        reward = -100./num_steps
+        reward = -1
         done = True
     elif env.pursuers['status'][0] == 'catching':
         reward = env.world_length

@@ -52,7 +52,6 @@ class PEKineEnv(object):
             trajectory = [],
             status = ['']*num_pursuers
         )
-        # self.values = np.zeros(num_pursuers) # distance from each pursuer to the evader
         # create figure
         fig, ax = plt.subplots(figsize=(16, 16))
 
@@ -84,16 +83,18 @@ class PEKineEnv(object):
         self.pursuers['trajectory'].append(self.pursuers['position'])
         self.pursuers['status'] = ['pursuing']*self.num_pursuers
         # create obs and info
-        obs = np.concatenate(
-            (
-                self.pursuers['position'].reshape(-1),
-                self.pursuers['velocity'].reshape(-1),
-                self.evaders['position'].reshape(-1),
-                self.evaders['velocity'].reshape(-1)
-            ), axis=0
-        )
-        info = ''
-        # self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1) # distance from each pursuer to the evader
+
+        # obs = np.concatenate(
+        #     (
+        #         self.pursuers['position'].reshape(-1),
+        #         self.pursuers['velocity'].reshape(-1),
+        #         self.evaders['position'].reshape(-1),
+        #         self.evaders['velocity'].reshape(-1)
+        #     ), axis=0
+        # )
+        # info = ''
+
+        obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
 
         return obs, info
 
@@ -114,9 +115,6 @@ class PEKineEnv(object):
         assert action_pursuers.shape == self.pursuers['position'].shape
         # default reward, done, info
         reward, done, info = 0, False, ''
-
-        # dist_prev = -self.values
-
         # set limitation for velocity commands
         action_evaders = np.clip(action_evaders, -self.world_length/4, self.world_length/4)
         action_pursuers = np.clip(action_pursuers, -self.world_length/4, self.world_length/4)
@@ -126,12 +124,12 @@ class PEKineEnv(object):
             if not self.is_outbound(temp_epos[i]):
                 if not self.is_occluded(temp_epos[i]):
                     self.evaders['position'][i] = temp_epos[i]
-                    self.evaders['velocity'][i] = action_evaders[i]
+                    # self.evaders['velocity'][i] = action_evaders[i]
                 else:
-                    self.evaders['velocity'][i] = np.zeros(2)
+                    # self.evaders['velocity'][i] = np.zeros(2)
                     self.evaders['status'][i] = 'occluded'
             else:
-                self.evaders['velocity'][i] = np.zeros(2)
+                # self.evaders['velocity'][i] = np.zeros(2)
                 self.evaders['status'][i] = 'out'
         self.evaders['trajectory'].append(self.evaders['position'])
         # step pursuers
@@ -150,39 +148,18 @@ class PEKineEnv(object):
                 self.pursuers['velocity'][i] = np.zeros(2)
                 self.pursuers['status'][i] = 'out'
         self.pursuers['trajectory'].append(self.pursuers['position'])
-
-        # if not self.obstacles_collision(self.evaders['position'][0]+action_evaders/self.rate):
-        #     if not self.out_of_bound(self.evaders['position'][0]+action_evaders/self.rate): # detect obstacles collision
-        #         self.evaders['position'][0] += action_evaders/self.rate
-        #     else:
-        #         info = "{} out of bound".format(self.evaders['names'][0])
-        # else:
-        #     info = "{} collide obstacle".format(self.evaders['names'][0])
-        # self.evaders['trajectory'].append(self.evaders['position'][0])
-        # # step pursuers
-        # for i in range(len(self.pursuers['names'])):
-        #     if not self.obstacles_collision(self.pursuers['position'][i]+action_pursuers[i]/self.rate):
-        #         if not self.out_of_bound(self.pursuers['position'][i]+action_pursuers[i]/self.rate): # detect obstacles collision
-        #             self.pursuers['position'][i] += action_pursuers[i]/self.rate
-        #         else:
-        #             info = "{} out of bound".format(self.pursuers['names'][i])
-        #     else:
-        #         info = "{} collide obstacle".format(self.pursuers['names'][i])
-
         # update reward, done, info
-        obs = np.concatenate(
-            (
-                self.pursuers['position'].reshape(-1),
-                self.pursuers['velocity'].reshape(-1),
-                self.evaders['position'].reshape(-1),
-                self.evaders['velocity'].reshape(-1)
-            ), axis=0
-        )
 
-        # self.values = -np.linalg.norm(self.evaders['position'][0]-self.pursuers['position'], axis=1)
-        # dist_curr = -self.values
-        # reward = dist_prev - dist_curr
+        # obs = np.concatenate(
+        #     (
+        #         self.pursuers['position'].reshape(-1),
+        #         self.pursuers['velocity'].reshape(-1),
+        #         self.evaders['position'].reshape(-1),
+        #         self.evaders['velocity'].reshape(-1)
+        #     ), axis=0
+        # )
 
+        obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
         if self.step_counter >= self.max_steps:
             info = "maximum step: {} reached".format(self.max_steps)
             done = True
@@ -232,21 +209,6 @@ class PEKineEnv(object):
         collision_flag = circle_flag or rect_flag
 
         return collision_flag
-
-    # # circle collision detection
-    # def _collide_circles(self, pos):
-    #     flag = False
-    #     for i in range(len(self.obstacle_circles['names'])):
-    #         if (pos[0]-self.obstacle_circles['position'][i,0])**2+(pos[1]-self.obstacle_circles['position'][i,1])**2 <= self.obstacle_circles['radius'][i]**2:
-    #             flag = True
-    #     return flag
-    # # rectangle collision detection
-    # def _collide_rectangles(self, pos):
-    #     flag = False
-    #     for i in range(len(self.obstacle_rectangles['names'])):
-    #         if 0<=(pos[0]-self.obstacle_rectangles['position'][i,0])<=self.obstacle_rectangles['dimension'][i,0] and 0<=(pos[1]-self.obstacle_rectangles['position'][i,1])<=self.obstacle_rectangles['dimension'][i,1]:
-    #             flag = True
-    #     return flag
 
     # out of bound detection
     def is_outbound(self, pos):

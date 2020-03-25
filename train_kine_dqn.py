@@ -21,11 +21,11 @@ if __name__ == '__main__':
     env=PEKineEnv()
     agent_p = DQNAgent()
     agent_p.warmup_episodes = 0
-    agent_p.update_step = 100
+    agent_p.update_step = 2000
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
-    num_episodes = 20000
+    num_episodes = 12000
     num_steps = 200
     num_epochs = 1
     episodic_returns = []
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         # reset env
         done, total_reward = False, []
         state, _ = env.reset()
-        agent_p.linear_epsilon_decay(episode=ep, decay_period=int(3*num_episodes/5))
+        agent_p.linear_epsilon_decay(episode=ep, decay_period=int(2*num_episodes/5))
         for st in range(num_steps):
             # action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
             # action_evaders = dqn_utils.cirluar_action(state[-4:-2],speed=evader_speed)
@@ -65,6 +65,7 @@ if __name__ == '__main__':
             # env.render(pause=1./env.rate)
             total_reward.append(rew)
             step_counter += 1
+            state = next_state
             if done:
                 if success:
                     success_counter += 1
