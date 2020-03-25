@@ -23,7 +23,7 @@ class PEKineEnv(object):
         self.num_evaders = num_evaders
         self.world_length = 10.
         self.interfere_radius = 0.2 # effective catch within this range
-        self.max_steps = self.rate*30 # 30s
+        self.max_steps = self.rate*60 # 1 min
         self.obstacle_circles = dict(
             names = ['circle_'+str(i) for i in range(1)],
             position = np.zeros((1,2)),

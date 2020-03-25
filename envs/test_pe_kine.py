@@ -6,7 +6,7 @@ from numpy import pi
 
 
 if __name__ == '__main__':
-    env=PEKineEnv(num_evaders=1,num_pursuers=1)
+    env=PEKineEnv(num_evaders=3,num_pursuers=1)
     for ep in range(10):
         # specify evader's spawining position
         for i in range(env.num_evaders):

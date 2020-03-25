@@ -20,13 +20,13 @@ from agents.agent_utils import dqn_utils
 if __name__ == '__main__':
     env=PEKineEnv()
     agent_p = DQNAgent()
-    agent_p.update_step = 8000
+    # agent_p.update_step = 8000
     agent_p.warmup_episodes = 0
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
     num_episodes = 12000
-    num_steps = 200
+    num_steps = 400
     num_epochs = 1
     episodic_returns = []
     sedimentary_returns = []
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         # specify pursuers and evaders spawining locations
         theta_e = random.uniform(-pi,pi)
         env.evaders_spawning_pool[0] = np.array([3*np.cos(theta_e),3*np.sin(theta_e)])
-        if random.normal(0.1,0.1) > agent_p.epsilon:
+        if random.uniform(0,0.11) > agent_p.epsilon:
             env.pursuers_spawning_pool[0] = random.choice([-4,4],2)+random.normal(0,0.1,2)
         # evader_speed = random.uniform(-pi/2,pi/2)
         # reset env

@@ -40,7 +40,7 @@ class Memory:
             batch = random.sample(self.memory, batch_size)
         print("A batch of memories are sampled with size: {}".format(batch_size))
 
-        return list(zip(*batch))
+        return list(zip(*batch)) # unzip batch
 
 
 class DQNAgent:
@@ -52,9 +52,9 @@ class DQNAgent:
         # hyper-parameters
         self.memory_cap = 500000
         self.layer_sizes = [256,128]
-        self.update_step = 4000
+        self.update_step = 10000
         self.learning_rate = 0.001
-        self.batch_size = 1024
+        self.batch_size = 8192
         self.gamma = 0.99
         self.init_eps = 1.
         self.final_eps = 0.1
