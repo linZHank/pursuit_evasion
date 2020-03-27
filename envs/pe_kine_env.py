@@ -34,6 +34,8 @@ class PEKineEnv(object):
             position = np.array([[-2,-self.world_length/2],[-2,self.world_length/2-1.5]]),
             dimension = np.array([[4,1.5],[4,1.5]])
         )
+        self.radius_evader = 0.1
+        self.radius_pursuer = 0.1
         # variables
         self.evaders_spawning_pool = np.zeros([num_evaders, 2])
         self.pursuers_spawning_pool = np.zeros([num_pursuers, 2])
@@ -83,16 +85,6 @@ class PEKineEnv(object):
         self.pursuers['trajectory'].append(self.pursuers['position'])
         self.pursuers['status'] = ['pursuing']*self.num_pursuers
         # create obs and info
-
-        # obs = np.concatenate(
-        #     (
-        #         self.pursuers['position'].reshape(-1),
-        #         self.pursuers['velocity'].reshape(-1),
-        #         self.evaders['position'].reshape(-1),
-        #         self.evaders['velocity'].reshape(-1)
-        #     ), axis=0
-        # )
-
         info = ''
         obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
 
@@ -149,16 +141,6 @@ class PEKineEnv(object):
                 self.pursuers['status'][i] = 'out'
         self.pursuers['trajectory'].append(self.pursuers['position'])
         # update reward, done, info
-
-        # obs = np.concatenate(
-        #     (
-        #         self.pursuers['position'].reshape(-1),
-        #         self.pursuers['velocity'].reshape(-1),
-        #         self.evaders['position'].reshape(-1),
-        #         self.evaders['velocity'].reshape(-1)
-        #     ), axis=0
-        # )
-
         obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
         if self.step_counter >= self.max_steps:
             info = "maximum step: {} reached".format(self.max_steps)
@@ -169,6 +151,7 @@ class PEKineEnv(object):
 
     def render(self,pause=2):
         fig, ax = plt.gcf(), plt.gca()
+        ax.cla()
         # plot world boundary
         bound = plt.Rectangle((-self.world_length/2,-self.world_length/2), self.world_length, self.world_length, linewidth=2, color='k', fill=False)
         ax.add_patch(bound)
@@ -179,15 +162,34 @@ class PEKineEnv(object):
         for ri in range(self.obstacle_rectangles['position'].shape[0]):
             obs_rect = plt.Rectangle((self.obstacle_rectangles['position'][ri]),self.obstacle_rectangles['dimension'][ri,0], self.obstacle_rectangles['dimension'][ri,1], color='grey')
             ax.add_patch(obs_rect)
-        # draw pursuers and evaders
-        plt.scatter(self.evaders['position'][:,0], self.evaders['position'][:,1], s=400, marker='*', color='crimson', linewidth=2)
-        plt.scatter(self.pursuers['position'][:,0], self.pursuers['position'][:,1], s=400, marker='o', color='deepskyblue', linewidth=2)
+        # draw evaders and annotate
+        plt.scatter(self.evaders['position'][:,0], self.evaders['position'][:,1], s=200, marker='*', color='crimson', linewidth=2)
+        for ie in range(self.num_evaders):
+            evader_circle = plt.Circle((self.evaders['position'][ie,0], self.evaders['position'][ie,1]), self.radius_evader, color='crimson', fill=False)
+            ax.add_patch(evader_circle)
+            plt.annotate(
+                self.evaders['names'][ie], # this is the text
+                (self.evaders['position'][ie,0], self.evaders['position'][ie,1]), # this is the point to label
+                textcoords="offset points", # how to position the text
+                xytext=(0,10), # distance from text to points (x,y)
+                ha='center')
+        # draw pursuers and annotate
+        for ip in range(self.num_pursuers):
+            pursuer_circle = plt.Circle((self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), self.radius_evader, color='deepskyblue')
+            ax.add_patch(pursuer_circle)
+            plt.annotate(
+                self.pursuers['names'][ip], # this is the text
+                (self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), # this is the point to label
+                textcoords="offset points", # how to position the text
+                xytext=(0,10), # distance from text to points (x,y)
+                ha='center')
+        # plt.scatter(self.pursuers['position'][:,0], self.pursuers['position'][:,1], s=400, marker='o', color='deepskyblue', linewidth=2)
         # set axis
         plt.axis(1.1/2*np.array([-self.world_length,self.world_length,-self.world_length,self.world_length]))
 
         plt.show(block=False)
         plt.pause(pause)
-        plt.clf()
+        # plt.clf()
 
     # Helper Functions
     # obstacles collision detection
