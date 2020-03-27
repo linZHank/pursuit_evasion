@@ -26,8 +26,8 @@ if __name__ == '__main__':
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
     num_episodes = 12000
-    num_steps = 400
-    num_epochs = 1
+    num_steps = 320
+    num_epochs = 4
     episodic_returns = []
     sedimentary_returns = []
     ep = 0
@@ -41,6 +41,8 @@ if __name__ == '__main__':
         env.evaders_spawning_pool[0] = np.array([3*np.cos(theta_e),3*np.sin(theta_e)])
         if random.uniform(0,0.11) > agent_p.epsilon:
             env.pursuers_spawning_pool[0] = random.choice([-4,4],2)+random.normal(0,0.1,2)
+        else:
+            env.pursuers_spawning_pool = np.zeros([env.num_pursuers, 2])
         # evader_speed = random.uniform(-pi/2,pi/2)
         # reset env
         done, total_reward = False, []
@@ -52,7 +54,7 @@ if __name__ == '__main__':
             action_evaders = np.zeros((1,2))
             ia, action_pursuers = agent_p.epsilon_greedy(state)
             next_state, reward, done, info = env.step(action_evaders, action_pursuers)
-            rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, reward, done)
+            rew, done, success = dqn_utils.adjust_reward(env, num_steps, state, reward, done, next_state)
             # store transitions
             agent_p.replay_memory.store([state, ia, rew, done, next_state])
             # train K epochs

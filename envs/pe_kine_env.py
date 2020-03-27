@@ -41,7 +41,7 @@ class PEKineEnv(object):
         self.pursuers_spawning_pool = np.zeros([num_pursuers, 2])
         self.step_counter = 0
         self.evaders = dict(
-            names = ['evaders'+str(i) for i in range(num_evaders)],
+            names = ['evaders_'+str(i) for i in range(num_evaders)],
             position = np.zeros((num_evaders,2)),
             velocity = np.zeros((num_evaders,2)),
             trajectory = [],

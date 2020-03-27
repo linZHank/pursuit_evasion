@@ -30,7 +30,7 @@ def circular_action(pos, speed):
 
     return action
 
-def adjust_reward(env, num_steps, state, reward, done):
+def adjust_reward(env, num_steps, state, reward, done, next_state):
     """
     Args:
         env: env object
@@ -48,6 +48,9 @@ def adjust_reward(env, num_steps, state, reward, done):
         done = True
         success = True
     else:
-        reward = -1./num_steps
+        if np.linalg.norm(state[:2]-state[-2:]) < np.linalg.norm(next_state[:2]-next_state[-2:]):
+            reward = -1./num_steps
+        else:
+            reward = 0
 
     return reward, done, success

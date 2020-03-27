@@ -16,7 +16,7 @@ from agents.agent_utils import dqn_utils
 if __name__ == '__main__':
     env=PEKineEnv()
     agent_p = DQNAgent()
-    model_path = sys.path[0]+'/saved_models/p1e1_kine/dqn/2020-03-24-17-02/agent_p/active_model-545041.h5'
+    model_path = sys.path[0]+'/saved_models/p1e1_kine/dqn/2020-03-26-00-39/agent_p/active_model-6479248.h5'
     agent_p.load_model(model_path)
     agent_p.epsilon = 0.01
 
@@ -33,11 +33,11 @@ if __name__ == '__main__':
         state, _ = env.reset()
         for st in range(num_steps):
             # action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
-            action_evaders = dqn_utils.circular_action(state[-4:-2],speed=evader_speed)
+            action_evaders = dqn_utils.circular_action(state[-2:],speed=evader_speed)
             # action_evaders = np.zeros((1,2))
             ia, action_pursuers = agent_p.epsilon_greedy(state)
             next_state, reward, done, info = env.step(action_evaders, action_pursuers)
-            rew, done, success = dqn_utils.adjust_reward(env, num_steps, next_state, reward, done, info)
+            rew, done, success = dqn_utils.adjust_reward(env, num_steps, state, reward, done, next_state)
             env.render(pause=1./env.rate)
             total_reward.append(rew)
             state = next_state
