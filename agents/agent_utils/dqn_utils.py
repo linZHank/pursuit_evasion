@@ -1,5 +1,8 @@
+import sys
+import os
 import numpy as np
 from numpy import random
+import pickle
 
 
 def obs_to_state(obs):
@@ -54,3 +57,16 @@ def adjust_reward(env, num_steps, state, reward, done, next_state):
             reward = 0
 
     return reward, done, success
+
+# save pickle
+def save_pkl(content, fdir, fname):
+    """
+    Save content into path/name as pickle file
+    Args:
+        path: file path, str
+        content: to be saved, array/dict/list...
+        fname: file name, str
+    """
+    file_path = os.path.join(fdir, fname)
+    with open(file_path, 'wb') as f:
+        pickle.dump(content, f, pickle.HIGHEST_PROTOCOL)

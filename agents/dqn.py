@@ -8,7 +8,9 @@ from __future__ import absolute_import, division, print_function
 import sys
 import os
 import numpy as np
+from collections import deque
 import random
+# from datetime import datetime
 import pickle
 import tensorflow as tf
 
@@ -18,29 +20,29 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras import Model
 
 
-class Memory:
-    """
-    This class defines replay buffer
-    """
-    def __init__(self, memory_cap):
-        self.memory_cap = memory_cap
-        self.memory = []
-    def store(self, experience):
-        # pop a random experience if memory full
-        if len(self.memory) >= self.memory_cap:
-            self.memory.pop(random.randint(0, len(self.memory)-1))
-        self.memory.append(experience)
-        print("experience: {} stored to memory".format(experience))
-
-    def sample_batch(self, batch_size):
-        # Select batch
-        if len(self.memory) < batch_size:
-            batch = random.sample(self.memory, len(self.memory))
-        else:
-            batch = random.sample(self.memory, batch_size)
-        print("A batch of memories are sampled with size: {}".format(batch_size))
-
-        return list(zip(*batch)) # unzip batch
+# class Memory:
+#     """
+#     This class defines replay buffer
+#     """
+#     def __init__(self, memory_cap):
+#         self.memory_cap = memory_cap
+#         self.memory = []
+#     def store(self, experience):
+#         # pop a random experience if memory full
+#         if len(self.memory) >= self.memory_cap:
+#             self.memory.pop(random.randint(0, len(self.memory)-1))
+#         self.memory.append(experience)
+#         print("experience: {} stored to memory".format(experience))
+#
+#     def sample_batch(self, batch_size):
+#         # Select batch
+#         if len(self.memory) < batch_size:
+#             batch = random.sample(self.memory, len(self.memory))
+#         else:
+#             batch = random.sample(self.memory, batch_size)
+#         print("A batch of memories are sampled with size: {}".format(batch_size))
+#
+#         return list(zip(*batch)) # unzip batch
 
 
 class DQNAgent:
@@ -48,17 +50,17 @@ class DQNAgent:
         # fixed
         self.name = 'pursuer'
         self.dim_state = 4
-        self.actions = np.array([[0,2],[0,-2],[-2,0],[2,0]]) # [d_x,d_y]
+        self.actions = np.array([[0,2],[0,-2],[-2,0],[2,0],[0,1],[0,-1],[-1,0],[1,0]]) # [d_x,d_y]
         # hyper-parameters
-        self.memory_cap = 500000
-        self.layer_sizes = [128]
+        self.memory_cap = 300000
+        self.layer_sizes = [128,128]
         self.update_step = 10000
-        self.learning_rate = 0.001
-        self.batch_size = 4096
+        self.learning_rate = 0.0007
+        self.batch_size = 1024
         self.gamma = 0.95
         self.init_eps = 1.
         self.final_eps = 0.1
-        self.warmup_episodes = 64
+        self.warmup_episodes = 512
         # variables
         self.epsilon = 1
         self.epoch_counter = 0
@@ -80,7 +82,25 @@ class DQNAgent:
         # metrics
         self.mse_metric = keras.metrics.MeanSquaredError()
         # init replay memory
-        self.replay_memory = Memory(memory_cap=self.memory_cap)
+        # self.replay_memory = Memory(memory_cap=self.memory_cap)
+        self.replay_memory = deque(maxlen=self.memory_cap)
+
+    def sample_batch(self):
+        # Select batch
+        if len(self.replay_memory) < self.batch_size:
+            batch = random.sample(self.replay_memory, len(self.replay_memory))
+        else:
+            batch = random.sample(self.replay_memory, self.batch_size)
+        print("A batch of memories are sampled with size: {}".format(self.batch_size))
+
+        return list(zip(*batch)) # unzip batch
+
+    def store(self, experience):
+        # pop a random experience if memory full
+        # if len(self.replay_memory) >= self.memory_cap:
+        #     self.replmemory.pop(random.randint(0, len(self.memory)-1))
+        self.replay_memory.append(experience)
+        print("experience: {} stored to memory".format(experience))
 
     def epsilon_greedy(self, state):
         """
@@ -126,12 +146,10 @@ class DQNAgent:
 
     def train(self):
         # sample a minibatch from replay buffer
-        minibatch = self.replay_memory.sample_batch(self.batch_size)
+        minibatch = self.sample_batch()
         (batch_states, batch_actions, batch_rewards, batch_done_flags, batch_next_states) = [np.array(minibatch[i]) for i in range(len(minibatch))]
         # open a GradientTape to record the operations run during the forward pass
         with tf.GradientTape() as tape:
-            # run forward pass
-            # pred_q = tf.math.reduce_sum(tf.cast(self.qnet_active(batch_states), tf.float32) * tf.one_hot(batch_actions, self.actions.shape[0]), axis=-1)
             pred_q = tf.math.reduce_sum(self.qnet_active(batch_states) * tf.one_hot(batch_actions, self.actions.shape[0]), axis=-1)
             target_q = batch_rewards + (1. - batch_done_flags) * self.gamma * tf.math.reduce_sum(self.qnet_stable(batch_next_states)*tf.one_hot(tf.math.argmax(self.qnet_active(batch_next_states),axis=1), self.actions.shape[0]),axis=1)
             # compute loss value
@@ -143,8 +161,8 @@ class DQNAgent:
         # update metrics
         self.mse_metric(target_q, pred_q)
         # display metrics
-        train_mse = self.mse_metric.result()
-        print("{} mse: {}".format(self.name, train_mse))
+        # train_mse = self.mse_metric.result()
+        print("{} mse: {}".format(self.name, self.mse_metric.result()))
         # reset training metrics
         self.mse_metric.reset_states()
         # epoch_counter ++
@@ -167,10 +185,10 @@ class DQNAgent:
         print("Q-Net models loaded")
         self.qnet_active.summary()
 
-    def save_memory(self, memory_dir):
-        # save transition buffer memory
-        data_utils.save_pkl(content=self.replay_memory, fdir=memory_dir, fname='memory.pkl')
-        print("transitions memory saved at {}".format(memory_dir))
+    # def save_memory(self, memory_dir):
+    #     # save transition buffer memory
+    #     dqn_utils.save_pkl(content=self.replay_memory, fdir=memory_dir, fname='memory.pkl')
+    #     print("transitions memory saved at {}".format(memory_dir))
 
     def load_memory(self, memory_path):
         with open(memory_path, 'rb') as f:

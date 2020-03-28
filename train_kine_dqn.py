@@ -21,13 +21,13 @@ if __name__ == '__main__':
     env=PEKineEnv()
     agent_p = DQNAgent()
     # agent_p.update_step = 8000
-    agent_p.warmup_episodes = 0
+    # agent_p.warmup_episodes = 0
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
     model_dir = sys.path[0]+"/saved_models/p1e1_kine/dqn/"+date_time+"/agent_p"
     # train parameters
-    num_episodes = 12000
+    num_episodes = 32000
     num_steps = 320
-    num_epochs = 4
+    num_iters = 16 # sample batch experience K times
     episodic_returns = []
     sedimentary_returns = []
     ep = 0
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         # specify pursuers and evaders spawining locations
         theta_e = random.uniform(-pi,pi)
         env.evaders_spawning_pool[0] = np.array([3*np.cos(theta_e),3*np.sin(theta_e)])
-        if random.uniform(0,0.11) > agent_p.epsilon:
+        if random.uniform(0,0.107) > agent_p.epsilon:
             env.pursuers_spawning_pool[0] = random.choice([-4,4],2)+random.normal(0,0.1,2)
         else:
             env.pursuers_spawning_pool = np.zeros([env.num_pursuers, 2])
@@ -47,7 +47,7 @@ if __name__ == '__main__':
         # reset env
         done, total_reward = False, []
         state, _ = env.reset()
-        agent_p.linear_epsilon_decay(episode=ep, decay_period=int(2*num_episodes/5))
+        agent_p.linear_epsilon_decay(episode=ep, decay_period=int(2*num_episodes/9))
         for st in range(num_steps):
             # action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=2)
             # action_evaders = dqn_utils.cirluar_action(state[-4:-2],speed=evader_speed)
@@ -56,10 +56,10 @@ if __name__ == '__main__':
             next_state, reward, done, info = env.step(action_evaders, action_pursuers)
             rew, done, success = dqn_utils.adjust_reward(env, num_steps, state, reward, done, next_state)
             # store transitions
-            agent_p.replay_memory.store([state, ia, rew, done, next_state])
-            # train K epochs
+            agent_p.store([state, ia, rew, done, next_state])
+            # sample k times and train
             if ep >= agent_p.warmup_episodes:
-                for i in range(num_epochs):
+                for i in range(num_iters):
                     agent_p.train()
             if not step_counter % agent_p.update_step:
                 agent_p.qnet_stable.set_weights(agent_p.qnet_active.get_weights())
@@ -86,7 +86,8 @@ if __name__ == '__main__':
     agent_p.save_model(model_dir)
     t_end = time.time()
     print("Training duration: {}".format(time.strftime("%H:%M:%S", time.gmtime(t_end-t_start))))
-
+    # save replay buffer
+    dqn_utils.save_pkl(content=agent_p.replay_memory, fdir=model_dir, fname='memory.pkl')
     # save rewards
     np.save(os.path.join(os.path.dirname(model_dir), 'ep_returns.npy'), episodic_returns)
     # plot ave_returns
