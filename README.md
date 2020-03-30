@@ -20,3 +20,6 @@
 
 ### DQN Training
 [![dqn_train](/figs/training.jpg)](https://www.youtube.com/embed/9IS8wZSyKbo)
+
+### 2 Pursuers 1 Evader Demonstration
+[![deploy_2p1e](/figs/deploy_2p1e.jpg)](https://youtu.be/eLJ-kUjVJ0M)
