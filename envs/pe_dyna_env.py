@@ -19,10 +19,10 @@ class PEDynaEnv(object):
     def __init__(self, num_evaders=1, num_pursuers=1):
         # world properties
         self.rate = 30 # Hz
-        self.num_pursuers = num_pursuers
+        self.num_pursuers = num_pursuers # not recommend for large numbers
         self.num_evaders = num_evaders
         self.world_length = 10.
-        self.interfere_radius = 0.2 # effective catch within this range
+        self.interfere_radius = 0.4 # effective catch within this range
         self.max_steps = self.rate*60 # 1 min
         self.obstacle_circles = dict(
             names = ['circle_'+str(i) for i in range(1)],
@@ -37,26 +37,31 @@ class PEDynaEnv(object):
         # pursuers and evaders properties
         self.radius_evader = 0.1
         self.radius_pursuer = 0.1
-        self.mass_pursuer = 0.5
-        self.mass_evader = 0.5
+        self.mass_pursuer = 0.4
+        self.mass_evader = 0.4
+        self.observation_space = (num_evaders*4+num_pursuers*4,) # x,y,vx,vy
+        self.action_space = (2,) # fx,fy
         # variables
-        self.evaders_spawning_pool = np.zeros([num_evaders, 3]) # x,y,theta
-        self.pursuers_spawning_pool = np.zeros([num_pursuers, 3])
+        self.evaders_spawning_pool = np.zeros([num_evaders, 2]) # x,y,theta
+        self.pursuers_spawning_pool = np.zeros([num_pursuers, 2])
         self.step_counter = 0
         self.evaders = dict(
             names = ['evaders_'+str(i) for i in range(num_evaders)],
-            position = np.zeros((num_evaders,2)),
-            velocity = np.zeros((num_evaders,2)),
+            position = np.zeros((num_evaders, 2)),
+            velocity = np.zeros((num_evaders, 2)),
+            force = np.zeros((num_evaders, 2)),
             trajectory = [],
-            status = ['']*num_evaders
+            status = ['deactivated']*num_evaders
         )
         self.pursuers = dict(
             names = ['pursuer_'+str(i) for i in range(num_pursuers)],
-            position = np.zeros((num_pursuers,2)),
-            velocity = np.zeros((num_pursuers,2)),
+            position = np.zeros((num_pursuers, 2)),
+            velocity = np.zeros((num_pursuers, 2)),
+            force = np.zeros((num_pursuers, 2)),
             trajectory = [],
-            status = ['']*num_pursuers
+            status = ['deactivated']*num_pursuers
         )
+        self.distance_matrix = np.zeros((num_evaders+num_pursuers, num_evaders+num_pursuers)) # [p's, e's]
         # create figure
         fig, ax = plt.subplots(figsize=(16, 16))
 
@@ -87,6 +92,8 @@ class PEDynaEnv(object):
         self.pursuers['trajectory'] = []
         self.pursuers['trajectory'].append(self.pursuers['position'])
         self.pursuers['status'] = ['pursuing']*self.num_pursuers
+        # update distance matrix
+        self.update_distance_matrix()
         # create obs and info
         info = ''
         obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
@@ -106,8 +113,8 @@ class PEDynaEnv(object):
             info: ''
         """
         # make sure actions are in right shapes
-        assert action_evaders.shape == self.evaders['position'].shape
-        assert action_pursuers.shape == self.pursuers['position'].shape
+        assert action_evaders.shape == self.evaders['action'].shape
+        assert action_pursuers.shape == self.pursuers['action'].shape
         # default reward, done, info
         reward, done, info = 0, False, ''
         # set limitation for velocity commands
@@ -227,3 +234,10 @@ class PEDynaEnv(object):
         flag = np.linalg.norm(pos-self.evaders['position'],axis=1) <= self.interfere_radius
 
         return flag
+
+    def update_distance_matrix(self):
+        # obtain list of poses
+        pos_all = np.concatenate((self.pursuers['position'],self.evaders['position']), axis=0)
+        for i in reversed(range(1,pos_all.shape[0]):)
+            for j in range(i):
+                self.distance_matrix[i,j] = np.linalg.norm(pos_all[i]-pos_all[j])
