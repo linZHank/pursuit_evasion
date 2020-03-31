@@ -47,8 +47,8 @@ class PEDynaEnv(object):
         self.step_counter = 0
         self.evaders = dict(
             names = ['evaders_'+str(i) for i in range(num_evaders)],
-            position = np.zeros((num_evaders, 2)),
-            velocity = np.zeros((num_evaders, 2)),
+            position = np.empty((num_evaders, 2)),
+            velocity = np.empty((num_evaders, 2)),
             force = np.zeros((num_evaders, 2)),
             trajectory = [],
             status = ['deactivated']*num_evaders
@@ -61,7 +61,13 @@ class PEDynaEnv(object):
             trajectory = [],
             status = ['deactivated']*num_pursuers
         )
-        self.distance_matrix = np.zeros((num_evaders+num_pursuers, num_evaders+num_pursuers)) # [p's, e's]
+        # set NaN
+        self.evaders['position'][:] = np.nan
+        self.pursuers['position'][:] = np.nan
+        self.evaders['velocity'][:] = np.nan
+        self.pursuers['velocity'][:] = np.nan
+        self.distance_matrix = np.zeros((num_evaders+num_pursuers,num_evaders+num_pursuers))
+        self.distance_matrix[:] = np.nan
         # create figure
         fig, ax = plt.subplots(figsize=(16, 16))
 
@@ -70,8 +76,7 @@ class PEDynaEnv(object):
         Reset targe and catcher to a random location
         Args:
         Return:
-            obs: array([x_p0,y_p0,...,v_x_p0,v_y_p0,...,x_e0,y_e0,...,v_x_e0,v_y_e0])
-            info: ''
+            obs: array([x_p0,y_p0,...,vx_p0,vy_p0,...,x_e0,y_e0,...,vx_e0,vy_e0])
         """
         self.step_counter = 0
         # reset evader
@@ -82,23 +87,31 @@ class PEDynaEnv(object):
         self.evaders['velocity'] = np.zeros((self.num_evaders,2))
         self.evaders['trajectory'] = []
         self.evaders['trajectory'].append(self.evaders['position'])
-        self.evaders['status'] = ['evading']*self.num_evaders
+        self.evaders['status'] = ['active']*self.num_evaders
+        self.compute_distances()
         # reset pursuers
         for i in range(self.num_pursuers):
             self.pursuers['position'][i] = self.pursuers_spawning_pool[i]
-            while self.is_outbound(self.pursuers['position'][i]) or self.is_occluded(self.pursuers['position'][i]) or sum(self.interfere_evaders(self.pursuers['position'][i])):
+            self.compute_distances()
+            while any(
+                [
+                    self.is_outbound(self.pursuers['position'][i]),
+                    self.is_occluded(self.pursuers['position'][i]),
+                    sum(self.distance_matrix[i]<=self.interfere_radius),
+                ]
+            ):
                 self.pursuers['position'][i] = random.uniform(-self.world_length/2, self.world_length/2, 2)
+                self.compute_distances()
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'] = []
         self.pursuers['trajectory'].append(self.pursuers['position'])
-        self.pursuers['status'] = ['pursuing']*self.num_pursuers
+        self.pursuers['status'] = ['active']*self.num_pursuers
         # update distance matrix
-        self.update_distance_matrix()
-        # create obs and info
-        info = ''
+        self.compute_distances()
+        # create obs
         obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
 
-        return obs, info
+        return obs
 
     def step(self, action_evaders, action_pursuers):
         """
@@ -235,9 +248,16 @@ class PEDynaEnv(object):
 
         return flag
 
-    def update_distance_matrix(self):
+    def compute_distances(self):
+        """
+        Compute distances between each others
+        Args:
+        Returns:
+            self.distance_matrix
+        """
         # obtain list of poses
         pos_all = np.concatenate((self.pursuers['position'],self.evaders['position']), axis=0)
-        for i in reversed(range(1,pos_all.shape[0]):)
+        for i in reversed(range(1,pos_all.shape[0])):
             for j in range(i):
                 self.distance_matrix[i,j] = np.linalg.norm(pos_all[i]-pos_all[j])
+                self.distance_matrix[j,i] = np.linalg.norm(pos_all[i]-pos_all[j])
