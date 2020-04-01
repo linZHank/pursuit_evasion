@@ -7,16 +7,17 @@ from numpy import pi
 
 if __name__ == '__main__':
     env=PEDynaEnv(num_evaders=2,num_pursuers=3)
-    for _ in range(16):
+    for ep in range(4):
         env.reset()
-        print(bool(sum(sum(env.distance_matrix>env.interfere_radius))))
+        # print(bool(sum(sum(env.distance_matrix>env.interfere_radius))))
                 # print("\npursuers status: {} \nevaders status: {}".format(env.pursuers['status'],env.evaders['status']))
-        env.render(pause=1./env.rate)
-        # for st in range(5):
-        #     # action_pursuers = np.zeros(2)
-        #     # action_evaders = np.zeros(2)
-        #     action_evaders = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=(env.num_evaders,2))
-        #     action_pursuers = random.uniform(low=-env.world_length/4,high=env.world_length/4,size=(env.num_pursuers,2))
-        #     obs, rew, done, _ = env.step(action_evaders,action_pursuers)
-        #     print("\n-\nepisode: {}, step: {} \nstate: {} \naction_evaders: {}, action_pursuers: {} \nstatus_evaders: {}, status_pursuers: {} \nreward: {}".format(ep+1, st+1, obs, action_evaders, action_pursuers, env.evaders['status'], env.pursuers['status'], rew))
-        #     env.render(pause=0.5)
+        # env.render(pause=1./env.rate)
+        for st in range(env.max_steps):
+            env.render(pause=1./env.rate)
+            action_evaders = np.random.uniform(-4,4,size=(env.num_evaders,2))
+            action_pursuers = np.random.uniform(-4,4,size=(env.num_pursuers,2))
+            obs, rew, done, info = env.step(action_evaders,action_pursuers)
+            print("\n-\nepisode: {}, step: {} \nstate: {} \naction_evaders: {} \naction_pursuers: {} \nstatus_evaders: {}, status_pursuers: {} \nreward: {}".format(ep+1, st+1, obs, action_evaders, action_pursuers, env.evaders['status'], env.pursuers['status'], rew))
+            if done:
+                print(info)
+                break

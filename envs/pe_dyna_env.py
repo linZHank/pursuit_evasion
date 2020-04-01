@@ -17,6 +17,10 @@ class PEDynaEnv(object):
     Pursuit-evasion dynamics env: N pursuers, N evader, homogeneous
     """
     def __init__(self, num_evaders=1, num_pursuers=1):
+        assert num_evaders >= 1
+        assert num_pursuers >= 1
+        assert isinstance(num_evaders, int)
+        assert isinstance(num_pursuers, int)
         # world properties
         self.rate = 30 # Hz
         self.num_pursuers = num_pursuers # not recommend for large numbers
@@ -37,8 +41,8 @@ class PEDynaEnv(object):
         # pursuers and evaders properties
         self.radius_evader = 0.1
         self.radius_pursuer = 0.1
-        self.mass_pursuer = 0.4
-        self.mass_evader = 0.4
+        self.mass_pursuer = 0.5
+        self.mass_evader = 0.5
         self.observation_space = (num_evaders*4+num_pursuers*4,) # x,y,vx,vy
         self.action_space = (2,) # fx,fy
         # variables
@@ -49,7 +53,6 @@ class PEDynaEnv(object):
             names = ['evaders_'+str(i) for i in range(num_evaders)],
             position = np.empty((num_evaders, 2)),
             velocity = np.empty((num_evaders, 2)),
-            force = np.zeros((num_evaders, 2)),
             trajectory = [],
             status = ['deactivated']*num_evaders
         )
@@ -57,15 +60,9 @@ class PEDynaEnv(object):
             names = ['pursuer_'+str(i) for i in range(num_pursuers)],
             position = np.zeros((num_pursuers, 2)),
             velocity = np.zeros((num_pursuers, 2)),
-            force = np.zeros((num_pursuers, 2)),
             trajectory = [],
             status = ['deactivated']*num_pursuers
         )
-        # set NaN
-        self.evaders['position'][:] = np.nan
-        self.pursuers['position'][:] = np.nan
-        self.evaders['velocity'][:] = np.nan
-        self.pursuers['velocity'][:] = np.nan
         self.distance_matrix = np.zeros((num_evaders+num_pursuers,num_evaders+num_pursuers))
         self.distance_matrix[:] = np.nan
         # create figure
@@ -82,7 +79,7 @@ class PEDynaEnv(object):
         # reset evader
         for i in range(self.num_evaders):
             self.evaders['position'][i] = self.evaders_spawning_pool[i]
-            while self.is_outbound(self.evaders['position'][i]) or self.is_occluded(self.evaders['position'][i]):
+            while self._is_outbound(self.evaders['position'][i]) or self._is_occluded(self.evaders['position'][i]):
                 self.evaders['position'][i] = random.uniform(-self.world_length/2, self.world_length/2, 2)
         self.evaders['velocity'] = np.zeros((self.num_evaders,2))
         self.evaders['trajectory'] = []
@@ -95,8 +92,8 @@ class PEDynaEnv(object):
             self.compute_distances()
             while any(
                 [
-                    self.is_outbound(self.pursuers['position'][i]),
-                    self.is_occluded(self.pursuers['position'][i]),
+                    self._is_outbound(self.pursuers['position'][i]),
+                    self._is_occluded(self.pursuers['position'][i]),
                     sum(self.distance_matrix[i]<=self.interfere_radius),
                 ]
             ):
@@ -109,62 +106,72 @@ class PEDynaEnv(object):
         # update distance matrix
         self.compute_distances()
         # create obs
-        obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
-
+        obs = np.concatenate(
+            (
+                self.pursuers['position'].reshape(-1),
+                self.pursuers['velocity'].reshape(-1),
+                self.evaders['position'].reshape(-1),
+                self.evaders['velocity'].reshape(-1)
+            ), axis=0
+        )
         return obs
 
     def step(self, action_evaders, action_pursuers):
         """
         Agents take velocity command
         Args:
-            action_evaders: array([[v_x,v_y]])
-            action_pursuers: array([[v_x0,v_y0],[v_x1,v_y1],...])
+            action_evaders: array([[fx_e0,fy_e0],...])
+            action_pursuers: array([[fx_p0,fy_p0],...])
         Returns:
             obs: array([x_p0,y_p0,...,v_x_p0,v_y_p0,...,x_e0,y_e0,...,v_x_e0,v_y_e0])
-            reward: -|evaders-pursuers|
+            reward:
             done: bool
             info: ''
         """
         # make sure actions are in right shapes
-        assert action_evaders.shape == self.evaders['action'].shape
-        assert action_pursuers.shape == self.pursuers['action'].shape
+        assert action_evaders.shape == self.evaders['velocity'].shape
+        assert action_pursuers.shape == self.pursuers['velocity'].shape
         # default reward, done, info
-        reward, done, info = 0, False, ''
+        reward, done, info = np.zeros(self.num_pursuers+self.num_evaders), False, ''
         # set limitation for velocity commands
-        action_evaders = np.clip(action_evaders, -self.world_length/4, self.world_length/4)
-        action_pursuers = np.clip(action_pursuers, -self.world_length/4, self.world_length/4)
+        action_evaders = np.clip(action_evaders, -2, 2) # N
+        action_pursuers = np.clip(action_pursuers, -2, 2)
         # step evaders
-        temp_epos = self.evaders['position']+action_evaders/self.rate # possible next pos
         for i in range(self.num_evaders):
-            if not self.is_outbound(temp_epos[i]):
-                if not self.is_occluded(temp_epos[i]):
-                    self.evaders['position'][i] = temp_epos[i]
-                    # self.evaders['velocity'][i] = action_evaders[i]
-                else:
-                    # self.evaders['velocity'][i] = np.zeros(2)
-                    self.evaders['status'][i] = 'occluded'
-            else:
-                # self.evaders['velocity'][i] = np.zeros(2)
-                self.evaders['status'][i] = 'out'
+            if self.evaders['status'][i] == 'active':
+                self.evaders['velocity'][i] += action_evaders[i]/self.mass_evader/self.rate
+                self.evaders['position'][i] += self.evaders['velocity'][i]/self.rate # possible next pos
+                if self._is_outbound(self.evaders['position'][i]) or self._is_occluded(self.evaders['position'][i]):
+                    self._disable_evader(id=i)
         self.evaders['trajectory'].append(self.evaders['position'])
         # step pursuers
-        temp_ppos = self.pursuers['position']+action_pursuers/self.rate
         for i in range(self.num_pursuers):
-            if not self.is_outbound(temp_ppos[i]):
-                if not self.is_occluded(temp_ppos[i]):
-                    self.pursuers['position'][i] = temp_ppos[i]
-                    self.pursuers['velocity'][i] = action_pursuers[i]
-                    if sum(self.interfere_evaders(temp_ppos[i])):
-                        self.pursuers['status'][i] = 'catching'
-                else:
-                    self.pursuers['velocity'][i] = np.zeros(2)
-                    self.pursuers['status'][i] = 'occluded'
-            else:
-                self.pursuers['velocity'][i] = np.zeros(2)
-                self.pursuers['status'][i] = 'out'
+            if self.pursuers['status'][i] == 'active':
+                self.pursuers['velocity'][i] += action_pursuers[i]/self.mass_evader/self.rate
+                self.pursuers['position'][i] += self.pursuers['velocity'][i]/self.rate # possible next pos
+                if self._is_outbound(self.pursuers['position'][i]) or self._is_occluded(self.pursuers['position'][i]):
+                    self._disable_pursuer(id=i)
         self.pursuers['trajectory'].append(self.pursuers['position'])
+        # update obs
+        obs = np.concatenate(
+            (
+                self.pursuers['position'].reshape(-1),
+                self.pursuers['velocity'].reshape(-1),
+                self.evaders['position'].reshape(-1),
+                self.evaders['velocity'].reshape(-1)
+            ), axis=0
+        )
         # update reward, done, info
-        obs = np.concatenate((self.pursuers['position'].reshape(-1),self.evaders['position'].reshape(-1)), axis=0)
+        if all(s=='deactivated' for s in self.evaders['status']):
+            reward[:self.num_pursuers] = 1
+            reward[-self.num_evaders:] = -1
+            done = True
+            info = "All evaders deceased"
+        if all(s=='deactivated' for s in self.pursuers['status']):
+            reward[:self.num_pursuers] = -1
+            reward[-self.num_evaders:] = 1
+            done = True
+            info = "All pursuers deceased"
         if self.step_counter >= self.max_steps:
             info = "maximum step: {} reached".format(self.max_steps)
             done = True
@@ -186,26 +193,28 @@ class PEDynaEnv(object):
             obs_rect = plt.Rectangle((self.obstacle_rectangles['position'][ri]),self.obstacle_rectangles['dimension'][ri,0], self.obstacle_rectangles['dimension'][ri,1], color='grey')
             ax.add_patch(obs_rect)
         # draw evaders and annotate
-        plt.scatter(self.evaders['position'][:,0], self.evaders['position'][:,1], s=200, marker='*', color='crimson', linewidth=2)
         for ie in range(self.num_evaders):
-            evader_circle = plt.Circle((self.evaders['position'][ie,0], self.evaders['position'][ie,1]), self.radius_evader, color='crimson', fill=False)
-            ax.add_patch(evader_circle)
-            plt.annotate(
-                self.evaders['names'][ie], # this is the text
-                (self.evaders['position'][ie,0], self.evaders['position'][ie,1]), # this is the point to label
-                textcoords="offset points", # how to position the text
-                xytext=(0,10), # distance from text to points (x,y)
-                ha='center')
+            if self.evaders['status'][ie]=='active':
+                plt.scatter(self.evaders['position'][ie,0], self.evaders['position'][ie,1], s=200, marker='*', color='orangered', linewidth=2)
+                evader_circle = plt.Circle((self.evaders['position'][ie,0], self.evaders['position'][ie,1]), self.radius_evader, color='darkorange', fill=False)
+                ax.add_patch(evader_circle)
+                plt.annotate(
+                    self.evaders['names'][ie], # this is the text
+                    (self.evaders['position'][ie,0], self.evaders['position'][ie,1]), # this is the point to label
+                    textcoords="offset points", # how to position the text
+                    xytext=(0,10), # distance from text to points (x,y)
+                    ha='center')
         # draw pursuers and annotate
         for ip in range(self.num_pursuers):
-            pursuer_circle = plt.Circle((self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), self.radius_evader, color='deepskyblue')
-            ax.add_patch(pursuer_circle)
-            plt.annotate(
-                self.pursuers['names'][ip], # this is the text
-                (self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), # this is the point to label
-                textcoords="offset points", # how to position the text
-                xytext=(0,10), # distance from text to points (x,y)
-                ha='center')
+            if self.pursuers['status'][ip]=='active':
+                pursuer_circle = plt.Circle((self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), self.radius_evader, color='deepskyblue')
+                ax.add_patch(pursuer_circle)
+                plt.annotate(
+                    self.pursuers['names'][ip], # this is the text
+                    (self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), # this is the point to label
+                    textcoords="offset points", # how to position the text
+                    xytext=(0,10), # distance from text to points (x,y)
+                    ha='center')
         # plt.scatter(self.pursuers['position'][:,0], self.pursuers['position'][:,1], s=400, marker='o', color='deepskyblue', linewidth=2)
         # set axis
         plt.axis(1.1/2*np.array([-self.world_length,self.world_length,-self.world_length,self.world_length]))
@@ -215,8 +224,22 @@ class PEDynaEnv(object):
         # plt.clf()
 
     # Helper Functions
+    def compute_distances(self):
+        """
+        Compute distances between each others
+        Args:
+        Returns:
+            self.distance_matrix
+        """
+        # obtain list of poses
+        pos_all = np.concatenate((self.pursuers['position'],self.evaders['position']), axis=0)
+        for i in reversed(range(1,pos_all.shape[0])):
+            for j in range(i):
+                self.distance_matrix[i,j] = np.linalg.norm(pos_all[i]-pos_all[j])
+                self.distance_matrix[j,i] = np.linalg.norm(pos_all[i]-pos_all[j])
+
     # obstacles collision detection
-    def is_occluded(self, pos):
+    def _is_occluded(self, pos):
         collision_flag = False
         # detect collision with circles
         circle_flag = False
@@ -236,28 +259,19 @@ class PEDynaEnv(object):
         return collision_flag
 
     # out of bound detection
-    def is_outbound(self, pos):
+    def _is_outbound(self, pos):
         flag = False
         if np.absolute(pos[0])>=self.world_length/2 or np.absolute(pos[1])>=self.world_length/2:
             flag = True
 
         return flag
 
-    def interfere_evaders(self, pos):
-        flag = np.linalg.norm(pos-self.evaders['position'],axis=1) <= self.interfere_radius
+    def _disable_pursuer(self, id):
+        self.pursuers['position'][id] = np.zeros(2)
+        self.pursuers['velocity'][id] = np.zeros(2)
+        self.pursuers['status'][id] = 'deactivated'
 
-        return flag
-
-    def compute_distances(self):
-        """
-        Compute distances between each others
-        Args:
-        Returns:
-            self.distance_matrix
-        """
-        # obtain list of poses
-        pos_all = np.concatenate((self.pursuers['position'],self.evaders['position']), axis=0)
-        for i in reversed(range(1,pos_all.shape[0])):
-            for j in range(i):
-                self.distance_matrix[i,j] = np.linalg.norm(pos_all[i]-pos_all[j])
-                self.distance_matrix[j,i] = np.linalg.norm(pos_all[i]-pos_all[j])
+    def _disable_evader(self, id):
+        self.evaders['position'][id] = np.zeros(2)
+        self.evaders['velocity'][id] = np.zeros(2)
+        self.evaders['status'][id] = 'deactivated'
