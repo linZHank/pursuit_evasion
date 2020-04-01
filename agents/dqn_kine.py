@@ -20,19 +20,43 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras import Model
 
 
+# class Memory:
+#     """
+#     This class defines replay buffer
+#     """
+#     def __init__(self, memory_cap):
+#         self.memory_cap = memory_cap
+#         self.memory = []
+#     def store(self, experience):
+#         # pop a random experience if memory full
+#         if len(self.memory) >= self.memory_cap:
+#             self.memory.pop(random.randint(0, len(self.memory)-1))
+#         self.memory.append(experience)
+#         print("experience: {} stored to memory".format(experience))
+#
+#     def sample_batch(self, batch_size):
+#         # Select batch
+#         if len(self.memory) < batch_size:
+#             batch = random.sample(self.memory, len(self.memory))
+#         else:
+#             batch = random.sample(self.memory, batch_size)
+#         print("A batch of memories are sampled with size: {}".format(batch_size))
+#
+#         return list(zip(*batch)) # unzip batch
+
+
 class DQNAgent:
-    def __init__(self, env, name):
+    def __init__(self):
         # fixed
-        self.name = name
-        self.env = env
-        self.dim_state = env.observation_space[0]
-        self.actions = np.array([[0,0],[0,1],[0,-1],[-1,0],[1,0]]) # [f_x,f_y]
+        self.name = 'pursuer'
+        self.dim_state = 4
+        self.actions = np.array([[0,2],[0,-2],[-2,0],[2,0],[0,1],[0,-1],[-1,0],[1,0]]) # [d_x,d_y]
         # hyper-parameters
-        self.memory_cap = 200000
+        self.memory_cap = 300000
         self.layer_sizes = [128,128]
         self.update_step = 10000
         self.learning_rate = 0.0007
-        self.batch_size = 4096
+        self.batch_size = 1024
         self.gamma = 0.95
         self.init_eps = 1.
         self.final_eps = 0.1
@@ -88,7 +112,7 @@ class DQNAgent:
         else:
             index = np.random.randint(self.actions.shape[0])
             print("{} Take a random action!".format(self.name))
-        action = self.actions[index]
+        action = self.actions[index].reshape(1,-1)
 
         return index, action
 

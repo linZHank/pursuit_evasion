@@ -143,7 +143,7 @@ class PEDynaEnv(object):
         assert action_evaders.shape == self.evaders['velocity'].shape
         assert action_pursuers.shape == self.pursuers['velocity'].shape
         # default reward, done, info
-        reward, done, info = np.zeros(self.num_pursuers+self.num_evaders), False, ''
+        reward, done, info = [0.]*(self.num_pursuers+self.num_evaders), [False]*(self.num_pursuers+self.num_evaders), ''
         # set limitation for velocity commands
         action_evaders = np.clip(action_evaders, -2, 2) # N
         action_pursuers = np.clip(action_pursuers, -2, 2)
@@ -185,19 +185,20 @@ class PEDynaEnv(object):
             ), axis=0
         )
         # update reward, done, info
-        if all(s=='deactivated' for s in self.evaders['status']):
-            reward[:self.num_pursuers] = 1
-            reward[-self.num_evaders:] = -1
-            done = True
+        done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
+        done[:self.num_pursuers] = [s=='deactivated' for s in self.pursuers['status']]
+        reward = [-1*d for d in done]
+        if all(done[-self.num_evaders:]): # pursuers win
+            reward[:self.num_pursuers] = [1.]*self.num_pursuers
+            reward[-self.num_evaders:] = [-1.]*self.num_evaders
             info = "All evaders deceased"
-        if all(s=='deactivated' for s in self.pursuers['status']):
-            reward[:self.num_pursuers] = -1
-            reward[-self.num_evaders:] = 1
-            done = True
+        if all(done[:self.num_pursuers]): # evaders win
+            reward[:self.num_pursuers] = [-1.]*self.num_pursuers
+            reward[-self.num_evaders:] = [1.]*self.num_evaders
             info = "All pursuers deceased"
         if self.step_counter >= self.max_steps:
             info = "maximum step: {} reached".format(self.max_steps)
-            done = True
+            done = [True]*(self.num_pursuers+self.num_evaders)
         self.step_counter += 1
 
         return obs, reward, done, info
