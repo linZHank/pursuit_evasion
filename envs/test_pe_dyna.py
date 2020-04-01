@@ -3,11 +3,12 @@ from pe_dyna_env import PEDynaEnv
 import numpy as np
 from numpy import random
 from numpy import pi
+import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
     env=PEDynaEnv(num_evaders=2,num_pursuers=3)
-    for ep in range(4):
+    for ep in range(2):
         env.reset()
         # print(bool(sum(sum(env.distance_matrix>env.interfere_radius))))
                 # print("\npursuers status: {} \nevaders status: {}".format(env.pursuers['status'],env.evaders['status']))

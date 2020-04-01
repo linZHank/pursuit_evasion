@@ -6,7 +6,6 @@ import numpy as np
 from numpy import pi
 from numpy import random
 import time
-import matplotlib
 import matplotlib.pyplot as plt
 
 import pdb
@@ -83,7 +82,12 @@ class PEDynaEnv(object):
                 self.evaders['position'][i] = random.uniform(-self.world_length/2, self.world_length/2, 2)
         self.evaders['velocity'] = np.zeros((self.num_evaders,2))
         self.evaders['trajectory'] = []
-        self.evaders['trajectory'].append(self.evaders['position'])
+        # retrieve individual coordinates to prevent obj sync
+        coords = [] # [x0,y0,x1,y1,...]
+        for p in self.evaders['position']:
+            for c in p:
+                coords.append(c)
+        self.evaders['trajectory'].append(coords)
         self.evaders['status'] = ['active']*self.num_evaders
         self.compute_distances()
         # reset pursuers
@@ -101,8 +105,14 @@ class PEDynaEnv(object):
                 self.compute_distances()
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'] = []
-        self.pursuers['trajectory'].append(self.pursuers['position'])
+        # retrieve individual coordinates to prevent obj sync
+        coords = [] # [x0,y0,x1,y1,...]
+        for p in self.pursuers['position']:
+            for c in p:
+                coords.append(c)
+        self.pursuers['trajectory'].append(coords)
         self.pursuers['status'] = ['active']*self.num_pursuers
+        # self.traj_pursuers.append([i for i in self.pursuers['position'][i]])
         # update distance matrix
         self.compute_distances()
         # create obs
@@ -114,6 +124,7 @@ class PEDynaEnv(object):
                 self.evaders['velocity'].reshape(-1)
             ), axis=0
         )
+
         return obs
 
     def step(self, action_evaders, action_pursuers):
@@ -139,11 +150,18 @@ class PEDynaEnv(object):
         # step evaders
         for i in range(self.num_evaders):
             if self.evaders['status'][i] == 'active':
-                self.evaders['velocity'][i] += action_evaders[i]/self.mass_evader/self.rate
-                self.evaders['position'][i] += self.evaders['velocity'][i]/self.rate # possible next pos
+                d_vel = action_evaders[i]/self.mass_evader/self.rate
+                self.evaders['velocity'][i] += d_vel
+                d_pos = self.evaders['velocity'][i]/self.rate
+                self.evaders['position'][i] += d_pos # possible next pos
                 if self._is_outbound(self.evaders['position'][i]) or self._is_occluded(self.evaders['position'][i]):
                     self._disable_evader(id=i)
-        self.evaders['trajectory'].append(self.evaders['position'])
+        # retrieve individual coordinates to prevent obj sync
+        coords = [] # [x0,y0,x1,y1,...]
+        for p in self.evaders['position']:
+            for c in p:
+                coords.append(c)
+        self.evaders['trajectory'].append(coords)
         # step pursuers
         for i in range(self.num_pursuers):
             if self.pursuers['status'][i] == 'active':
@@ -151,7 +169,12 @@ class PEDynaEnv(object):
                 self.pursuers['position'][i] += self.pursuers['velocity'][i]/self.rate # possible next pos
                 if self._is_outbound(self.pursuers['position'][i]) or self._is_occluded(self.pursuers['position'][i]):
                     self._disable_pursuer(id=i)
-        self.pursuers['trajectory'].append(self.pursuers['position'])
+        # retrieve individual coordinates to prevent obj sync
+        coords = [] # [x0,y0,x1,y1,...]
+        for p in self.pursuers['position']:
+            for c in p:
+                coords.append(c)
+        self.pursuers['trajectory'].append(coords)
         # update obs
         obs = np.concatenate(
             (
@@ -193,6 +216,7 @@ class PEDynaEnv(object):
             obs_rect = plt.Rectangle((self.obstacle_rectangles['position'][ri]),self.obstacle_rectangles['dimension'][ri,0], self.obstacle_rectangles['dimension'][ri,1], color='grey')
             ax.add_patch(obs_rect)
         # draw evaders and annotate
+        traj_es = np.array(self.evaders['trajectory'])
         for ie in range(self.num_evaders):
             if self.evaders['status'][ie]=='active':
                 plt.scatter(self.evaders['position'][ie,0], self.evaders['position'][ie,1], s=200, marker='*', color='orangered', linewidth=2)
@@ -204,7 +228,10 @@ class PEDynaEnv(object):
                     textcoords="offset points", # how to position the text
                     xytext=(0,10), # distance from text to points (x,y)
                     ha='center')
-        # draw pursuers and annotate
+                # draw trajectory
+                plt.plot(traj_es[:,2*ie], traj_es[:,2*ie+1],  linestyle='--', linewidth=0.5, color='orangered')
+        # draw pursuers
+        traj_ps = np.array(self.pursuers['trajectory'])
         for ip in range(self.num_pursuers):
             if self.pursuers['status'][ip]=='active':
                 pursuer_circle = plt.Circle((self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), self.radius_evader, color='deepskyblue')
@@ -215,13 +242,21 @@ class PEDynaEnv(object):
                     textcoords="offset points", # how to position the text
                     xytext=(0,10), # distance from text to points (x,y)
                     ha='center')
-        # plt.scatter(self.pursuers['position'][:,0], self.pursuers['position'][:,1], s=400, marker='o', color='deepskyblue', linewidth=2)
+                # draw interfere circle
+                interfere_circle = plt.Circle((self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), self.interfere_radius, color='deepskyblue', linestyle='-.', fill=False)
+                ax.add_patch(interfere_circle)
+                # draw trajectory
+                plt.plot(traj_ps[:,2*ip], traj_ps[:,2*ip+1],  linestyle='--', linewidth=0.5, color='deepskyblue')
         # set axis
         plt.axis(1.1/2*np.array([-self.world_length,self.world_length,-self.world_length,self.world_length]))
-
+        ax.set_xlabel('X', fontsize=20)
+        ax.set_ylabel('Y', fontsize=20)
+        ax.set_xticks(np.arange(-5, 6))
+        ax.set_yticks(np.arange(-5, 6))
+        plt.grid(color='grey', linestyle=':', linewidth=0.5)
+        # show
         plt.show(block=False)
         plt.pause(pause)
-        # plt.clf()
 
     # Helper Functions
     def compute_distances(self):
