@@ -8,8 +8,6 @@ from numpy import random
 import time
 import matplotlib.pyplot as plt
 
-import pdb
-
 
 class PEDynaEnv(object):
     """
@@ -98,7 +96,7 @@ class PEDynaEnv(object):
                 [
                     self._is_outbound(self.pursuers['position'][i]),
                     self._is_occluded(self.pursuers['position'][i]),
-                    sum(self.distance_matrix[i]<=1.5*self.interfere_radius),
+                    sum(self.distance_matrix[i]<=2*self.interfere_radius)
                 ]
             ):
                 self.pursuers['position'][i] = random.uniform(-self.world_length/2, self.world_length/2, 2)
@@ -156,6 +154,7 @@ class PEDynaEnv(object):
                 self.evaders['position'][i] += d_pos # possible next pos
                 if self._is_outbound(self.evaders['position'][i]) or self._is_occluded(self.evaders['position'][i]):
                     self._disable_evader(id=i)
+        self.compute_distances()
         # retrieve individual coordinates to prevent obj sync
         coords = [] # [x0,y0,x1,y1,...]
         for p in self.evaders['position']:
@@ -169,6 +168,7 @@ class PEDynaEnv(object):
                 self.pursuers['position'][i] += self.pursuers['velocity'][i]/self.rate # possible next pos
                 if self._is_outbound(self.pursuers['position'][i]) or self._is_occluded(self.pursuers['position'][i]):
                     self._disable_pursuer(id=i)
+        self.compute_distances()
         # retrieve individual coordinates to prevent obj sync
         coords = [] # [x0,y0,x1,y1,...]
         for p in self.pursuers['position']:
@@ -184,6 +184,11 @@ class PEDynaEnv(object):
                 self.evaders['velocity'].reshape(-1)
             ), axis=0
         )
+        # detect pe interfere
+        for i in range(self.num_pursuers):
+            for j in range(self.num_evaders):
+                if self.distance_matrix[i,self.num_pursuers+j] <= self.interfere_radius:
+                    self._disable_evader(id=j)
         # update reward, done, info
         done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
         done[:self.num_pursuers] = [s=='deactivated' for s in self.pursuers['status']]
