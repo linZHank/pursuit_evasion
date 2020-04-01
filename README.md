@@ -23,3 +23,6 @@
 
 ### 2 Pursuers 1 Evader Demonstration
 [![deploy_2p1e](/figs/deploy_2p1e.jpg)](https://youtu.be/eLJ-kUjVJ0M)
+
+### Pointmass Dynamics Env Test
+[![dyna_env_test](/figs/dyna_env_test.jpg)](https://youtu.be/j7_hBi3cW2E)

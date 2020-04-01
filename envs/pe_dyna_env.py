@@ -98,7 +98,7 @@ class PEDynaEnv(object):
                 [
                     self._is_outbound(self.pursuers['position'][i]),
                     self._is_occluded(self.pursuers['position'][i]),
-                    sum(self.distance_matrix[i]<=self.interfere_radius),
+                    sum(self.distance_matrix[i]<=1.5*self.interfere_radius),
                 ]
             ):
                 self.pursuers['position'][i] = random.uniform(-self.world_length/2, self.world_length/2, 2)
