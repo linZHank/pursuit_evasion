@@ -49,14 +49,14 @@ class PEDynaEnv(object):
         self.pursuers_spawning_pool = np.zeros([num_pursuers, 2])
         self.step_counter = 0
         self.evaders = dict(
-            names = ['evaders_'+str(i) for i in range(num_evaders)],
+            names = ['e_'+str(i) for i in range(num_evaders)],
             position = np.empty((num_evaders, 2)),
             velocity = np.empty((num_evaders, 2)),
             trajectory = [],
             status = ['deactivated']*num_evaders
         )
         self.pursuers = dict(
-            names = ['pursuer_'+str(i) for i in range(num_pursuers)],
+            names = ['p_'+str(i) for i in range(num_pursuers)],
             position = np.zeros((num_pursuers, 2)),
             velocity = np.zeros((num_pursuers, 2)),
             trajectory = [],
