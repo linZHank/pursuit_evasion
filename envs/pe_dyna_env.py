@@ -190,6 +190,9 @@ class PEDynaEnv(object):
                 if self.distance_matrix[i,self.num_pursuers+j] <= self.interfere_radius:
                     self._disable_evader(id=j)
         # update reward, done, info
+        if self.step_counter >= self.max_steps:
+            for i in range(self.num_pursuers):
+                self._disable_pursuer(id=i)
         done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
         done[:self.num_pursuers] = [s=='deactivated' for s in self.pursuers['status']]
         reward = [-1*d for d in done]
@@ -201,9 +204,6 @@ class PEDynaEnv(object):
             reward[:self.num_pursuers] = [-1.]*self.num_pursuers
             reward[-self.num_evaders:] = [1.]*self.num_evaders
             info = "All pursuers deceased"
-        if self.step_counter >= self.max_steps:
-            info = "maximum step: {} reached".format(self.max_steps)
-            done = [True]*(self.num_pursuers+self.num_evaders)
         self.step_counter += 1
 
         return obs, reward, done, info

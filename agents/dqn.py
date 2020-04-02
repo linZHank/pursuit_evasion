@@ -32,7 +32,7 @@ class DQNAgent:
         self.layer_sizes = [128,128]
         self.update_step = 10000
         self.learning_rate = 0.0007
-        self.batch_size = 4096
+        self.batch_size = 8192
         self.gamma = 0.95
         self.init_eps = 1.
         self.final_eps = 0.1
@@ -72,9 +72,6 @@ class DQNAgent:
         return list(zip(*batch)) # unzip batch
 
     def store(self, experience):
-        # pop a random experience if memory full
-        # if len(self.replay_memory) >= self.memory_cap:
-        #     self.replmemory.pop(random.randint(0, len(self.memory)-1))
         self.replay_memory.append(experience)
         print("experience: {} stored to memory".format(experience))
 
@@ -146,14 +143,14 @@ class DQNAgent:
 
     def save_model(self, model_dir):
         self.qnet_active.summary()
-        self.qnet_stable.summary()
         # create model saving directory if not exist
-        if not os.path.exists(model_dir):
-            os.makedirs(model_dir)
+        model_path = os.path.join(model_dir, self.name, 'models', str(self.epoch_counter)+'.h5')
+        if not os.path.exists(os.path.dirname(model_path)):
+            os.makedirs(os.path.dirname(model_path))
         # save model
-        self.qnet_active.save(os.path.join(model_dir, 'active_model-'+str(self.epoch_counter)+'.h5'))
+        self.qnet_active.save(model_path)
         # self.qnet_stable.save(os.path.join(model_dir, 'stable_model-'+str(self.epoch_counter)+'.h5'))
-        print("Q_net models saved at {}".format(model_dir))
+        print("Q_net models saved at {}".format(model_path))
 
     def load_model(self, model_path):
         self.qnet_active = tf.keras.models.load_model(model_path)
@@ -161,10 +158,13 @@ class DQNAgent:
         print("Q-Net models loaded")
         self.qnet_active.summary()
 
-    # def save_memory(self, memory_dir):
-    #     # save transition buffer memory
-    #     dqn_utils.save_pkl(content=self.replay_memory, fdir=memory_dir, fname='memory.pkl')
-    #     print("transitions memory saved at {}".format(memory_dir))
+    def save_memory(self, memory_dir):
+        memory_path = os.path.join(memory_dir, self.name, 'memory.pkl')
+        if not os.path.exists(os.path.dirname(memory_path)):
+            os.makedirs(os.path.dirname(memory_path))
+        with open(memory_path, 'wb') as f:
+            pickle.dump(self.replay_memory, f, pickle.HIGHEST_PROTOCOL)
+        print("Replay memory saved at {}".format(memory_path))
 
     def load_memory(self, memory_path):
         with open(memory_path, 'rb') as f:

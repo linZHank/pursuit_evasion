@@ -20,20 +20,17 @@ if __name__ == '__main__':
     agent_p1 = DQNAgent(env=env, name='p_1')
     agent_e0 = DQNAgent(env=env, name='e_0')
     date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
-    model_dir = sys.path[0]+"/saved_models/p2e1_dyna/test_dqn/"+date_time
-    num_episodes = 20
-    num_steps = 200
+    model_dir = sys.path[0]+"/saved_models/p2e1_dyna/dqn/"+date_time
+    num_episodes = 8192
+    num_steps = env.max_steps
     num_samples = 1 # sample k times to train q-net
     episodic_returns_p0, episodic_returns_p1, episodic_returns_e0 = [], [], []
     sedimentary_returns_p0, sedimentary_returns_p1, sedimentary_returns_e0 = [], [], []
     step_counter = [1, 1, 1]
     pwin_counter, ewin_counter = 0, 0
     for ep in range(num_episodes):
-        done = False
-        done_p0, done_p1, done_e0 = False, False, False
-        total_reward_p0 = []
-        total_reward_p1 = []
-        total_reward_e0 = []
+        done = [False]*3
+        total_reward_p0, total_reward_p1, total_reward_e0 = [], [], []
         # reset env and get state from it
         state = env.reset()
         print("\n---\n{}".format(state))
@@ -43,7 +40,6 @@ if __name__ == '__main__':
         # env.render(pause=0.5)
         for st in range(num_steps):
             # env.render(pause=1./env.rate)
-            # env.render(pause=0.5)
             # take actions, no action will take if deactivated
             action_evaders = np.zeros((1,2))
             action_pursuers = np.zeros((2,2))
@@ -126,6 +122,7 @@ if __name__ == '__main__':
     ax.grid()
     fig_path_e0 = os.path.join(model_dir, agent_e0.name+'ave_returns.png')
     plt.savefig(fig_path_e0)
+
 
     # save model
     agent_p0.save_model(model_dir)
