@@ -57,7 +57,7 @@ if __name__ == '__main__':
             # store transitions and train
             if not done[0]:
                 agent_p0.store([state, ia_p0, reward[0], done[0], next_state])
-                for _ in range(num_samples):
+                if ep >= agent_p0.warmup_episodes:
                     agent_p0.train()
                 if not step_counter[0] % agent_p0.update_step:
                     agent_p0.qnet_stable.set_weights(agent_p0.qnet_active.get_weights())
@@ -65,7 +65,7 @@ if __name__ == '__main__':
                 total_reward_p0.append(reward[0])
             if not done[1]:
                 agent_p1.store([state, ia_p1, reward[1], done[1], next_state])
-                for _ in range(num_samples):
+                if ep >= agent_p1.warmup_episodes:
                     agent_p1.train()
                 if not step_counter[1] % agent_p1.update_step:
                     agent_p1.qnet_stable.set_weights(agent_p1.qnet_active.get_weights())
@@ -73,7 +73,7 @@ if __name__ == '__main__':
                 total_reward_p1.append(reward[1])
             if not done[2]:
                 agent_e0.store([state, ia_e0, reward[2], done[2], next_state])
-                for _ in range(num_samples):
+                if ep >= agent_e0.warmup_episodes:
                     agent_e0.train()
                 if not step_counter[2] % agent_e0.update_step:
                     agent_e0.qnet_stable.set_weights(agent_e0.qnet_active.get_weights())
@@ -122,7 +122,6 @@ if __name__ == '__main__':
     ax.grid()
     fig_path_e0 = os.path.join(model_dir, agent_e0.name+'ave_returns.png')
     plt.savefig(fig_path_e0)
-
 
     # save model
     agent_p0.save_model(model_dir)

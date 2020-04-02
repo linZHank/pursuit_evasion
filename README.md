@@ -8,7 +8,7 @@
 ## Quick Start
 
 ## Test Script
-`python3 envs/pe_env_test.py`
+`python3 envs/test_pe_dyna.py`
 
 ## Function Tests
 > Videos
