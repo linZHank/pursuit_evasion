@@ -10,7 +10,7 @@ import os
 import numpy as np
 from collections import deque
 import random
-# from datetime import datetime
+from datetime import datetime
 import pickle
 import tensorflow as tf
 
@@ -25,18 +25,20 @@ class DQNAgent:
         # fixed
         self.name = name
         self.env = env
+        self.date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
         self.dim_state = env.observation_space[0]
-        self.actions = np.array([[0,0],[0,1],[0,-1],[-1,0],[1,0]]) # [f_x,f_y]
+        self.actions = np.array([[0,1],[0,-1],[-1,0],[1,0]]) # [f_x,f_y]
+        self.model_dir = os.path.join(sys.path[0], 'saved_models/dqn', env.name, self.date_time, str(name))
         # hyper-parameters
-        self.memory_cap = 200000
+        self.memory_cap = int(env.max_steps*1000)
         self.layer_sizes = [128,128]
-        self.update_step = 10000
-        self.learning_rate = 0.0007
+        self.update_epoch = 100 # 8000
+        self.learning_rate = 0.0003
         self.batch_size = 8192
-        self.gamma = 0.95
+        self.gamma = 0.99
         self.init_eps = 1.
         self.final_eps = 0.1
-        self.warmup_episodes = 512
+        self.warmup_episodes = 10 # 1000
         # variables
         self.epsilon = 1
         self.epoch_counter = 0
@@ -117,7 +119,7 @@ class DQNAgent:
         if self.epsilon <= self.final_eps:
             self.epsilon = self.final_eps
 
-    def train(self):
+    def train(self, auto_save=True):
         # sample a minibatch from replay buffer
         minibatch = self.sample_batch()
         (batch_states, batch_actions, batch_rewards, batch_done_flags, batch_next_states) = [np.array(minibatch[i]) for i in range(len(minibatch))]
@@ -138,13 +140,19 @@ class DQNAgent:
         print("{} mse: {}".format(self.name, self.mse_metric.result()))
         # reset training metrics
         self.mse_metric.reset_states()
-        # epoch_counter ++
+        # update qnet_stable
         self.epoch_counter += 1
+        if not self.epoch_counter % self.update_epoch:
+            self.qnet_stable.set_weights(self.qnet_active.get_weights())
+            print("\n=====================\nTarget Q-net updated\n=====================\n")
+        if auto_save:
+            if not self.epoch_counter % 1000:
+                self.save_model()
 
-    def save_model(self, model_dir):
+    def save_model(self):
         self.qnet_active.summary()
         # create model saving directory if not exist
-        model_path = os.path.join(model_dir, self.name, 'models', str(self.epoch_counter)+'.h5')
+        model_path = os.path.join(self.model_dir, 'models', str(self.epoch_counter)+'.h5')
         if not os.path.exists(os.path.dirname(model_path)):
             os.makedirs(os.path.dirname(model_path))
         # save model
@@ -158,8 +166,8 @@ class DQNAgent:
         print("Q-Net models loaded")
         self.qnet_active.summary()
 
-    def save_memory(self, memory_dir):
-        memory_path = os.path.join(memory_dir, self.name, 'memory.pkl')
+    def save_memory(self):
+        memory_path = os.path.join(self.model_dir, 'memory.pkl')
         if not os.path.exists(os.path.dirname(memory_path)):
             os.makedirs(os.path.dirname(memory_path))
         with open(memory_path, 'wb') as f:
