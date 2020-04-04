@@ -138,7 +138,6 @@ class DQNAgent:
         # update metrics
         self.mse_metric(target_q, pred_q)
         # display metrics
-        # train_mse = self.mse_metric.result()
         print("{} mse: {}".format(self.name, self.mse_metric.result()))
         # reset training metrics
         self.mse_metric.reset_states()
