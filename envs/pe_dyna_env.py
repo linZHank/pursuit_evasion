@@ -39,8 +39,8 @@ class PEDynaEnv(object):
         # pursuers and evaders properties
         self.radius_evader = 0.1
         self.radius_pursuer = 0.1
-        self.mass_pursuer = 0.5
-        self.mass_evader = 0.5
+        self.mass_pursuer = 0.3
+        self.mass_evader = 0.3
         self.observation_space = (num_evaders*4+num_pursuers*4,) # x,y,vx,vy
         self.action_space = (2,) # fx,fy
         # variables
@@ -144,7 +144,7 @@ class PEDynaEnv(object):
         assert action_evaders.shape == self.evaders['velocity'].shape
         assert action_pursuers.shape == self.pursuers['velocity'].shape
         # default reward, done, info
-        reward, done, info = [0.]*(self.num_pursuers+self.num_evaders), [False]*(self.num_pursuers+self.num_evaders), ''
+        reward, done, info = np.zeros(self.num_pursuers+self.num_evaders), [False]*(self.num_pursuers+self.num_evaders), ''
         # set limitation for velocity commands
         action_evaders = np.clip(action_evaders, -2, 2) # N
         action_pursuers = np.clip(action_pursuers, -2, 2)
@@ -167,7 +167,7 @@ class PEDynaEnv(object):
         # step pursuers
         for i in range(self.num_pursuers):
             if self.pursuers['status'][i] == 'active':
-                self.pursuers['velocity'][i] += action_pursuers[i]/self.mass_evader/self.rate
+                self.pursuers['velocity'][i] += action_pursuers[i]/self.mass_pursuer/self.rate
                 self.pursuers['position'][i] += self.pursuers['velocity'][i]/self.rate # possible next pos
                 if self._is_outbound(self.pursuers['position'][i]) or self._is_occluded(self.pursuers['position'][i]):
                     self._disable_pursuer(id=i)
@@ -199,14 +199,15 @@ class PEDynaEnv(object):
         # update reward, done, info
         done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
         done[:self.num_pursuers] = [s=='deactivated' for s in self.pursuers['status']]
-        reward = [-1.*d for d in done]
+        # reward = [-1.*d for d in done]
+        reward = -1.*np.array(done)
         if all(done[:self.num_pursuers]): # evaders win
-            reward[:self.num_pursuers] = [-1.]*self.num_pursuers
-            reward[-self.num_evaders:] = [1.]*self.num_evaders
+            reward[:self.num_pursuers] = -1. # [-1.]*self.num_pursuers
+            reward[-self.num_evaders:] = 1. # [1.]*self.num_evaders
             info = "All pursuers deceased"
         if all(done[-self.num_evaders:]): # pursuers win
-            reward[:self.num_pursuers] = [1.]*self.num_pursuers
-            reward[-self.num_evaders:] = [-1.]*self.num_evaders
+            reward[:self.num_pursuers] = 1. # [1.]*self.num_pursuers
+            reward[-self.num_evaders:] = -1. # [-1.]*self.num_evaders
             info = "All evaders deceased"
         self.step_counter += 1
 

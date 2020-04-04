@@ -132,11 +132,6 @@ if __name__ == '__main__':
         sedimentary_returns_p1.append(sum(episodic_returns_p1)/(ep+1))
         sedimentary_returns_e0.append(sum(episodic_returns_e0)/(ep+1))
         # plot ave_returns
-        # fig_r, (ax_p0, ax_p1, ax_e0) = plt.gcf(), plt.gca()
-        # (ax_p0, ax_p1, ax_e0) = fig_r.get_axes()
-        # plt.cla('all')
-        # fig_r, (ax_p0, ax_p1, ax_e0, ax_env) = plt.subplots(4, sharex=True, sharey = True, figsize=(16,8))
-        # fig_r.suptitle('Averaged Returns')
         (ax_p0, ax_p1, ax_e0) = fig_r.get_axes()
         ax_p0.cla()
         ax_p0.plot(np.arange(ep+1)+1, sedimentary_returns_p0, color='deepskyblue', label='pursuer 0')
@@ -155,29 +150,6 @@ if __name__ == '__main__':
         fig_r.show()
         # plt.show(block=False)
 
-    # plot.show(block=False)
-    # plot ave_returns
-    # fig, ax = plt.subplots()
-    # # plot p0
-    # plt.plot(np.arange(len(sedimentary_returns_p0))+1, sedimentary_returns_p0)
-    # ax.set(xlabel='Episode', ylabel='Averaged returns')
-    # ax.grid()
-    # fig_path_p0 = os.path.join(model_dir, agent_p0.name+'ave_returns.png')
-    # if not os.path.isdir(model_dir):
-    #     os.makedirs(model_dir)
-    # plt.savefig(fig_path_p0)
-    # # plot p1
-    # ax.cla()
-    # plt.plot(np.arange(len(sedimentary_returns_p1))+1, sedimentary_returns_p1)
-    # ax.set(xlabel='Episode', ylabel='Averaged returns')
-    # ax.grid()
-    # fig_path_p1 = os.path.join(model_dir, agent_p1.name+'ave_returns.png')
-    # plt.savefig(fig_path_p1)
-    # # plot e0
-    # ax.cla()
-    # plt.plot(np.arange(len(sedimentary_returns_e0))+1, sedimentary_returns_e0)
-    # ax.set(xlabel='Episode', ylabel='Averaged returns')
-    # ax.grid()
     fig_path = os.path.join(os.path.dirname(agent_p0.model_dir), 'ave_returns.png')
     fig_r.savefig(fig_path)
 

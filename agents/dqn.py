@@ -62,6 +62,8 @@ class DQNAgent:
         # init replay memory
         # self.replay_memory = Memory(memory_cap=self.memory_cap)
         self.replay_memory = deque(maxlen=self.memory_cap)
+        if not os.path.exists(self.model_dir):
+            os.makedirs(self.model_dir)
 
     def sample_batch(self):
         # Select batch
