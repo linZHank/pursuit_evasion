@@ -31,14 +31,14 @@ class DQNAgent:
         self.model_dir = os.path.join(sys.path[0], 'saved_models/dqn', env.name, self.date_time, str(name))
         # hyper-parameters
         self.memory_cap = int(env.max_steps*1000)
-        self.layer_sizes = [128,128]
-        self.update_epoch = 100 # 8000
+        self.layer_sizes = [256,128,64]
+        self.update_epoch = 8000
         self.learning_rate = 0.0003
         self.batch_size = 8192
         self.gamma = 0.99
         self.init_eps = 1.
         self.final_eps = 0.1
-        self.warmup_episodes = 10 # 1000
+        self.warmup_episodes = 1000
         # variables
         self.epsilon = 1
         self.epoch_counter = 0
