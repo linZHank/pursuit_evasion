@@ -20,12 +20,12 @@ class PEDynaEnv(object):
         assert isinstance(num_pursuers, int)
         # world properties
         self.name = 'dyna_p'+str(num_pursuers)+'e'+str(num_evaders)
-        self.rate = 30 # Hz
+        self.rate = 20 # Hz
         self.num_pursuers = num_pursuers # not recommend for large numbers
         self.num_evaders = num_evaders
         self.world_length = 10.
         self.interfere_radius = 0.4 # effective catch within this range
-        self.max_steps = self.rate*60-1 # 1 min
+        self.max_steps = self.rate*60 # 1 min
         self.obstacle_circles = dict(
             names = ['circle_'+str(i) for i in range(1)],
             position = np.zeros((1,2)),
@@ -193,7 +193,7 @@ class PEDynaEnv(object):
                 if self.distance_matrix[i,self.num_pursuers+j] <= self.interfere_radius:
                     self._disable_evader(id=j)
         # episode end reached
-        if self.step_counter >= self.max_steps:
+        if self.step_counter+1 >= self.max_steps:
             for i in range(self.num_pursuers):
                 self._disable_pursuer(id=i)
         # update reward, done, info
@@ -214,7 +214,6 @@ class PEDynaEnv(object):
         return obs, reward, done, info
 
     def render(self,pause=2):
-        # self.fig, self.ax = plt.gcf(), plt.gca()
         self.ax = self.fig.get_axes()[0]
         self.ax.cla()
         # plot world boundary
@@ -231,8 +230,7 @@ class PEDynaEnv(object):
         traj_es = np.array(self.evaders['trajectory'])
         for ie in range(self.num_evaders):
             if self.evaders['status'][ie]=='active':
-                # plt.scatter(self.evaders['position'][ie,0], self.evaders['position'][ie,1], s=200, marker='*', color='orangered', linewidth=2)
-                self.ax.scatter(self.evaders['position'][ie,0], self.evaders['position'][ie,1], s=200, marker='*', color='orangered', linewidth=2)
+                self.ax.scatter(self.evaders['position'][ie,0], self.evaders['position'][ie,1], s=100, marker='*', color='orangered', linewidth=2)
                 evader_circle = plt.Circle((self.evaders['position'][ie,0], self.evaders['position'][ie,1]), self.radius_evader, color='darkorange', fill=False)
                 self.ax.add_patch(evader_circle)
                 # plt.annotate(
@@ -243,7 +241,6 @@ class PEDynaEnv(object):
                     xytext=(0,10), # distance from text to points (x,y)
                     ha='center')
                 # draw trajectory
-                # plt.plot(traj_es[:,2*ie], traj_es[:,2*ie+1],  linestyle='--', linewidth=0.5, color='orangered')
                 self.ax.plot(traj_es[:,2*ie], traj_es[:,2*ie+1],  linestyle='--', linewidth=0.5, color='orangered')
         # draw pursuers
         traj_ps = np.array(self.pursuers['trajectory'])
@@ -262,10 +259,8 @@ class PEDynaEnv(object):
                 interfere_circle = plt.Circle((self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), self.interfere_radius, color='deepskyblue', linestyle='-.', fill=False)
                 self.ax.add_patch(interfere_circle)
                 # draw trajectory
-                # plt.plot(traj_ps[:,2*ip], traj_ps[:,2*ip+1],  linestyle='--', linewidth=0.5, color='deepskyblue')
                 self.ax.plot(traj_ps[:,2*ip], traj_ps[:,2*ip+1],  linestyle='--', linewidth=0.5, color='deepskyblue')
         # set axis
-        # plt.axis(1.1/2*np.array([-self.world_length,self.world_length,-self.world_length,self.world_length]))
         self.ax.axis(1.1/2*np.array([-self.world_length,self.world_length,-self.world_length,self.world_length]))
         self.ax.set_xlabel('X', fontsize=20)
         self.ax.set_ylabel('Y', fontsize=20)
