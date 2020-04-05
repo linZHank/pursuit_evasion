@@ -20,7 +20,7 @@ from tensorflow.keras.layers import Dense
 from tensorflow.keras import Model
 
 import logging
-logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
+# logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
 
 
 class Memory:
@@ -116,7 +116,7 @@ class DQNAgent:
             index = np.argmax(self.qnet_active(state.reshape(1,-1)))
         else:
             index = np.random.randint(self.actions.shape[0])
-            print("{} Take a random action!".format(self.name))
+            logging.debug("{} Take a random action!".format(self.name))
         action = self.actions[index]
 
         return index, action
@@ -166,14 +166,14 @@ class DQNAgent:
         # update metrics
         self.mse_metric(target_q, pred_q)
         # display metrics
-        print("{} mse: {}".format(self.name, self.mse_metric.result()))
+        logging.info("{} mse: {}".format(self.name, self.mse_metric.result()))
         # reset training metrics
         self.mse_metric.reset_states()
         # update qnet_stable
         self.epoch_counter += 1
         if not self.epoch_counter % self.update_epoch:
             self.qnet_stable.set_weights(self.qnet_active.get_weights())
-            logging.warning("\n=====================\nTarget Q-net updated\n=====================\n")
+            logging.warning("\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTarget Q-net updated\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n")
         if auto_save:
             if not self.epoch_counter % self.save_frequency:
                 self.save_model()

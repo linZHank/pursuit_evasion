@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 """
-Training 2 DQN controllers with multiple pursuers and evaders in a adversarial fashion. 
+Training 2 DQN controllers with multiple pursuers and evaders in a adversarial fashion.
 """
 import sys
 import os
@@ -34,26 +34,28 @@ from agents.agent_utils import dqn_utils
 #         # Visible devices must be set before GPUs have been initialized
 #         print(e)
 
+import logging
+logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
+
 
 if __name__ == '__main__':
-    num_evaders, num_pursuers = 2, 2
+    num_evaders, num_pursuers = 4, 4
     env=PEDynaEnv(num_evaders=num_evaders, num_pursuers=num_pursuers)
     agent_p = DQNAgent(env=env, name='pursuer')
     agent_e = DQNAgent(env=env, name='evader')
     num_episodes = 20000
-    num_steps = 1000
-    num_samples = 2 # sample k times to train q-net
+    num_steps = 600
+    num_samples = 1 # sample k times to train q-net
     episodic_returns_p = np.zeros((num_episodes, num_pursuers))
     episodic_returns_e = np.zeros((num_episodes, num_evaders))
     sedimentary_returns_p = np.zeros((num_episodes, num_pursuers))
     sedimentary_returns_e = np.zeros((num_episodes, num_evaders))
     # step_counter = [1, 1, 1]
     pwin_counter, ewin_counter = 0, 0
-    fig_r = plt.figure(figsize=(12,8))
+    fig_r = plt.figure(figsize=(12,2*(num_pursuers+num_evaders)))
     axs = []
     for i in range(num_pursuers+num_evaders):
         axs.append(fig_r.add_subplot(num_pursuers+num_evaders,1,i+1))
-    fig_r.suptitle('Averaged Returns')
 
     for ep in range(num_episodes):
         # step-wise reward storage
@@ -86,13 +88,13 @@ if __name__ == '__main__':
             for i in range(env.num_pursuers):
                 if not agent_done[i]: # env.pursuers['status'][i] == 'active:
                     reward[i] += -sum(env.distance_matrix[i,:num_pursuers]<=env.interfere_radius)/num_steps
-                    agent_p.store([states[i], ia_p[i], reward[i], done[i], next_states[i]])
+                    agent_p.replay_memory.store([states[i], ia_p[i], reward[i], done[i], next_states[i]])
                 else:
                     reward[i] = 0.
             total_reward_p.append(reward[:num_pursuers])
             for j in range(env.num_evaders):
                 if not agent_done[-num_evaders+j]: # env.evaders['status'][i] == 'active':
-                    agent_e.store([states[-num_evaders+j], ia_e[j], reward[-num_evaders+j], done[-num_evaders+j], next_states[-num_evaders+j]])
+                    agent_e.replay_memory.store([states[-num_evaders+j], ia_e[j], reward[-num_evaders+j], done[-num_evaders+j], next_states[-num_evaders+j]])
                 else:
                     reward[-num_evaders+j] = 0.
             total_reward_e.append(reward[-num_evaders:])
@@ -109,7 +111,7 @@ if __name__ == '__main__':
             if info == "All pursuers deceased":
                 ewin_counter += 1
             # log step
-            print("\n-\nepisode: {}, step: {}, epsilon: {} \nstate: {} \naction_pursuers: {} \naction_evaders: {} \nnext_state: {} \nreward: {} \ninfo: {} \npursuers won: {}, evaders won: {}\n-\n".format(ep+1, st+1, agent_p.epsilon, obs, action_pursuers, action_evaders, next_obs, reward, info, pwin_counter, ewin_counter))
+            logging.info("\n-\nepisode: {}, step: {}, epsilon: {} \nstate: {} \naction_pursuers: {} \naction_evaders: {} \nnext_state: {} \nreward: {} \ninfo: {} \npursuers won: {}, evaders won: {}\n-\n".format(ep+1, st+1, agent_p.epsilon, obs, action_pursuers, action_evaders, next_obs, reward, info, pwin_counter, ewin_counter))
             obs = next_obs
             states = next_states
             agent_done = [done[i] for i in range(len(done))]
@@ -121,21 +123,27 @@ if __name__ == '__main__':
         # sedimentary returns
         sedimentary_returns_p[ep] = np.sum(episodic_returns_p[:ep+1],axis=0)/(ep+1)
         sedimentary_returns_e[ep] = np.sum(episodic_returns_e[:ep+1],axis=0)/(ep+1)
+        logging.info("\n===\nepisode: {} \nepisodic_returns: {} \nsedimentray_returns: {} \n===\n".format(ep+1, (episodic_returns_p, episodic_returns_e), (sedimentary_returns_p, sedimentary_returns_e)))
         # plot ave_returns
-        axs = fig_r.get_axes()
-        for i in range(num_pursuers):
-            axs[i].cla()
-            axs[i].plot(np.arange(ep)+1, sedimentary_returns_p[:ep,i], color='deepskyblue', label='pursuer '+str(i))
-            axs[i].legend()
-            axs[i].grid(color='grey', linewidth=0.25)
-        for i in range(num_evaders):
-            axs[num_pursuers+i].cla()
-            axs[num_pursuers+i].plot(np.arange(ep)+1, sedimentary_returns_e[:ep,i], color='orangered', label='evader '+str(i))
-            axs[num_pursuers+i].legend()
-            axs[num_pursuers+i].grid(color='grey', linewidth=0.25)
-        plt.pause(1./100)
+        fig_r.clf()
+        axs = []
+        for i in range(num_pursuers+num_evaders):
+            axs.append(fig_r.add_subplot(num_pursuers+num_evaders,1,i+1))
+            if i < num_pursuers:
+                axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_p[:ep+1,i], color='deepskyblue', label='pursuer '+str(i))
+            else:
+                axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_e[:ep+1,i-num_pursuers], color='orangered', label='evader '+str(i-num_pursuers))
+            y_ticks = np.arange(-1.,1.25,0.25)
+            if not i==num_pursuers+num_evaders-1:
+                axs[i].set_xticklabels([])
+            axs[i].set_yticks(y_ticks)
+            axs[i].set_xlim(0, ep+1)
+            axs[i].set_ylim(y_ticks[0]-0.1, y_ticks[-1]+0.1)
+            axs[i].legend(loc='upper right')
+            axs[i].grid(color='grey', linewidth=0.2)
+        plt.tight_layout()
+        plt.pause(1./1000)
         fig_r.show()
-        plt.show(block=False)
 
     fig_path = os.path.join(os.path.dirname(agent_p.model_dir), 'ave_returns.png')
     fig_r.savefig(fig_path)

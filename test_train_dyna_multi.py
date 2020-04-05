@@ -39,14 +39,14 @@ logging.basicConfig(format='%(asctime)s %(message)s',level=logging.WARNING)
 
 
 if __name__ == '__main__':
-    num_evaders, num_pursuers = 2, 2
+    num_evaders, num_pursuers = 4, 4
     env=PEDynaEnv(num_evaders=num_evaders, num_pursuers=num_pursuers)
     agent_p = DQNAgent(env=env, name='pursuer')
-    agent_p.warmup_episodes=10
-    agent_p.decay_period=20
-    agent_p.update_epoch=25
+    agent_p.warmup_episodes=5
+    agent_p.decay_period=5
+    agent_p.update_epoch=500
     agent_e = DQNAgent(env=env, name='evader')
-    num_episodes = 50
+    num_episodes = 20
     num_steps = 100
     num_samples = 1 # sample k times to train q-net
     episodic_returns_p = np.zeros((num_episodes, num_pursuers))
@@ -55,11 +55,11 @@ if __name__ == '__main__':
     sedimentary_returns_e = np.zeros((num_episodes, num_evaders))
     # step_counter = [1, 1, 1]
     pwin_counter, ewin_counter = 0, 0
-    fig_r = plt.figure(figsize=(12,8))
+    fig_r = plt.figure(figsize=(12,2*(num_pursuers+num_evaders)))
     axs = []
     for i in range(num_pursuers+num_evaders):
         axs.append(fig_r.add_subplot(num_pursuers+num_evaders,1,i+1))
-    fig_r.suptitle('Averaged Returns')
+    # fig_r.suptitle('Averaged Returns')
 
     for ep in range(num_episodes):
         agent_done = [False]*(num_evaders+num_pursuers)
@@ -162,16 +162,17 @@ if __name__ == '__main__':
             if i < num_pursuers:
                 axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_p[:ep+1,i], color='deepskyblue', label='pursuer '+str(i))
             else:
-                axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_e[:ep+1,i-num_pursuers], color='orangered', label='evader '+str(i))
-            y_ticks = np.arange(-1.,1.4,0.4)
+                axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_e[:ep+1,i-num_pursuers], color='orangered', label='evader '+str(i-num_pursuers))
+            y_ticks = np.arange(-1.,1.25,0.25)
             if not i==num_pursuers+num_evaders-1:
                 axs[i].set_xticklabels([])
             axs[i].set_yticks(y_ticks)
             axs[i].set_xlim(0, ep+1)
             axs[i].set_ylim(y_ticks[0]-0.1, y_ticks[-1]+0.1)
-            axs[i].legend(loc='lower right')
+            axs[i].legend(loc='upper right')
             axs[i].grid(color='grey', linewidth=0.2)
-        fig_r.suptitle('Averaged Returns')
+        # fig_r.suptitle('Averaged Returns')
+        plt.tight_layout()
         plt.pause(1./1000)
         fig_r.show()
 
