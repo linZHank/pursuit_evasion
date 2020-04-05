@@ -35,18 +35,18 @@ if gpus:
         print(e)
 
 import logging
-logging.basicConfig(format='%(asctime)s %(message)s',level=logging.WARNING)
+logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
 
 
 if __name__ == '__main__':
     num_evaders, num_pursuers = 4, 4
     env=PEDynaEnv(num_evaders=num_evaders, num_pursuers=num_pursuers)
     agent_p = DQNAgent(env=env, name='pursuer')
-    agent_p.warmup_episodes=5
-    agent_p.decay_period=5
+    agent_p.warmup_episodes=100
+    agent_p.decay_period=50
     agent_p.update_epoch=500
     agent_e = DQNAgent(env=env, name='evader')
-    num_episodes = 20
+    num_episodes = 200
     num_steps = 100
     num_samples = 1 # sample k times to train q-net
     episodic_returns_p = np.zeros((num_episodes, num_pursuers))
@@ -138,45 +138,51 @@ if __name__ == '__main__':
         # episodic_returns_e[ep] = np.array([sum(total_reward_e[i]) for i in range(num_evaders)])
         # print("\n---\n ep_ret_p: {} \n ep_ret_e: {} \n---\n".format(episodic_returns_p[ep],episodic_returns_e[ep])) # debug
         # sedimentary returns
-        sedimentary_returns_p[ep] = np.sum(episodic_returns_p[:ep+1],axis=0)/(ep+1)
-        sedimentary_returns_e[ep] = np.sum(episodic_returns_e[:ep+1],axis=0)/(ep+1)
-        # plot ave_returns
-        # axs = fig_r.get_axes()
-        # for i in range(num_pursuers):
-        #     axs[i].cla()
-        #     axs[i].plot(np.arange(ep)+1, sedimentary_returns_p[:ep,i], color='deepskyblue', label='pursuer '+str(i))
-        #     axs[i].legend()
-        #     axs[i].grid(color='grey', linewidth=0.25)
-        # for i in range(num_evaders):
-        #     axs[num_pursuers+i].cla()
-        #     axs[num_pursuers+i].plot(np.arange(ep)+1, sedimentary_returns_e[:ep,i], color='orangered', label='evader '+str(i))
-        #     axs[num_pursuers+i].legend()
-        #     axs[num_pursuers+i].grid(color='grey', linewidth=0.25)
-        # plt.pause(1./100)
+        sedimentary_returns_p[ep] = np.sum(episodic_returns_p[:ep],axis=0)/(ep+1)
+        sedimentary_returns_e[ep] = np.sum(episodic_returns_e[:ep],axis=0)/(ep+1)
+        logging.info("\n===\nepisode: {} \nepisodic_returns: {} \nsedimentray_returns: {} \n===\n".format(ep+1, (episodic_returns_p[ep], episodic_returns_e[ep]), (sedimentary_returns_p[ep], sedimentary_returns_e[ep])))
+        # uncomment following to plot episodic average returns, but will slow down training
+        ###################################################################################
+        # fig_r.clf()
+        # axs = []
+        # for i in range(num_pursuers+num_evaders):
+        #     axs.append(fig_r.add_subplot(num_pursuers+num_evaders,1,i+1))
+        #     if i < num_pursuers:
+        #         axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_p[:ep+1,i], color='deepskyblue', label='pursuer '+str(i))
+        #     else:
+        #         axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_e[:ep+1,i-num_pursuers], color='orangered', label='evader '+str(i-num_pursuers))
+        #     y_ticks = np.arange(-1.,1.25,0.25)
+        #     if not i==num_pursuers+num_evaders-1:
+        #         axs[i].set_xticklabels([])
+        #     axs[i].set_yticks(y_ticks)
+        #     axs[i].set_xlim(0, ep+1)
+        #     axs[i].set_ylim(y_ticks[0]-0.1, y_ticks[-1]+0.1)
+        #     axs[i].legend(loc='upper right')
+        #     axs[i].grid(color='grey', linewidth=0.2)
+        # plt.tight_layout()
+        # plt.pause(1./1000)
         # fig_r.show()
-        # plt.show(block=False)
-        fig_r.clf()
-        axs = []
-        for i in range(num_pursuers+num_evaders):
-            axs.append(fig_r.add_subplot(num_pursuers+num_evaders,1,i+1))
-            if i < num_pursuers:
-                axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_p[:ep+1,i], color='deepskyblue', label='pursuer '+str(i))
-            else:
-                axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_e[:ep+1,i-num_pursuers], color='orangered', label='evader '+str(i-num_pursuers))
-            y_ticks = np.arange(-1.,1.25,0.25)
-            if not i==num_pursuers+num_evaders-1:
-                axs[i].set_xticklabels([])
-            axs[i].set_yticks(y_ticks)
-            axs[i].set_xlim(0, ep+1)
-            axs[i].set_ylim(y_ticks[0]-0.1, y_ticks[-1]+0.1)
-            axs[i].legend(loc='upper right')
-            axs[i].grid(color='grey', linewidth=0.2)
-        # fig_r.suptitle('Averaged Returns')
-        plt.tight_layout()
-        plt.pause(1./1000)
-        fig_r.show()
+        ###################################################################################
 
     # print("\n====\nep return: {} \nsed return: {}".format((episodic_returns_p,episodic_returns_e), (sedimentary_returns_p, sedimentary_returns_e))) # debug
+    # save averaged returns figure
+    fig_r.clf()
+    axs = []
+    for i in range(num_pursuers+num_evaders):
+        axs.append(fig_r.add_subplot(num_pursuers+num_evaders,1,i+1))
+        if i < num_pursuers:
+            axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_p[:ep+1,i], color='deepskyblue', label='pursuer '+str(i))
+        else:
+            axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_e[:ep+1,i-num_pursuers], color='orangered', label='evader '+str(i-num_pursuers))
+        y_ticks = np.arange(-1.,1.25,0.25)
+        if not i==num_pursuers+num_evaders-1:
+            axs[i].set_xticklabels([])
+        axs[i].set_yticks(y_ticks)
+        axs[i].set_xlim(0, ep+1)
+        axs[i].set_ylim(y_ticks[0]-0.1, y_ticks[-1]+0.1)
+        axs[i].legend(loc='upper right')
+        axs[i].grid(color='grey', linewidth=0.2)
+    plt.tight_layout()
     fig_path = os.path.join(os.path.dirname(agent_p.model_dir), 'ave_returns.png')
     fig_r.savefig(fig_path)
 

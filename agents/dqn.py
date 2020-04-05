@@ -61,7 +61,7 @@ class DQNAgent:
         self.save_frequency = 10000
         # hyper-parameters
         self.memory_cap = int(env.max_steps*1000)
-        self.layer_sizes = [256,128]
+        self.layer_sizes = [256,256]
         self.update_epoch = 8000
         self.learning_rate = 0.0003
         self.batch_size = 8192
