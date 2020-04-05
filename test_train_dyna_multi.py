@@ -34,11 +34,17 @@ if gpus:
         # Visible devices must be set before GPUs have been initialized
         print(e)
 
+import logging
+logging.basicConfig(format='%(asctime)s %(message)s',level=logging.WARNING)
+
 
 if __name__ == '__main__':
     num_evaders, num_pursuers = 2, 2
     env=PEDynaEnv(num_evaders=num_evaders, num_pursuers=num_pursuers)
     agent_p = DQNAgent(env=env, name='pursuer')
+    agent_p.warmup_episodes=10
+    agent_p.decay_period=20
+    agent_p.update_epoch=25
     agent_e = DQNAgent(env=env, name='evader')
     num_episodes = 50
     num_steps = 100
@@ -91,14 +97,14 @@ if __name__ == '__main__':
             for i in range(env.num_pursuers):
                 if not agent_done[i]: # env.pursuers['status'][i] == 'active:
                     reward[i] += -sum(env.distance_matrix[i]<=env.interfere_radius)/num_steps
-                    agent_p.store([states[i], ia_p[i], reward[i], done[i], next_states[i]])
+                    agent_p.replay_memory.store([states[i], ia_p[i], reward[i], done[i], next_states[i]])
                 else:
                     reward[i] = 0.
                 # total_reward_p[i] += reward[i]
             total_reward_p.append(reward[:num_pursuers])
             for j in range(env.num_evaders):
                 if not agent_done[-num_evaders+j]: # env.evaders['status'][i] == 'active':
-                    agent_e.store([states[-num_evaders+j], ia_e[j], reward[-num_evaders+j], done[-num_evaders+j], next_states[-num_evaders+j]])
+                    agent_e.replay_memory.store([states[-num_evaders+j], ia_e[j], reward[-num_evaders+j], done[-num_evaders+j], next_states[-num_evaders+j]])
                 else:
                     reward[-num_evaders+j] = 0.
                 # total_reward_e[i] += reward[-num_evaders+i]
@@ -117,7 +123,7 @@ if __name__ == '__main__':
             if info == "All pursuers deceased":
                 ewin_counter += 1
             # log step
-            # print("\n-\nepisode: {}, step: {}, epsilon: {} \nstate: {} \naction_pursuers: {} \naction_evaders: {} \nnext_state: {} \nreward: {} \ninfo: {} \npursuers won: {}, evaders won: {}\n-\n".format(ep+1, st+1, agent_p.epsilon, obs, action_pursuers, action_evaders, next_obs, reward, info, pwin_counter, ewin_counter))
+            logging.info("\n-\nepisode: {}, step: {}, epsilon: {} \nstate: {} \naction_pursuers: {} \naction_evaders: {} \nnext_state: {} \nreward: {} \ninfo: {} \npursuers won: {}, evaders won: {}\n-\n".format(ep+1, st+1, agent_p.epsilon, obs, action_pursuers, action_evaders, next_obs, reward, info, pwin_counter, ewin_counter))
             obs = next_obs
             states = next_states
             agent_done = [done[i] for i in range(len(done))]
@@ -135,20 +141,39 @@ if __name__ == '__main__':
         sedimentary_returns_p[ep] = np.sum(episodic_returns_p[:ep+1],axis=0)/(ep+1)
         sedimentary_returns_e[ep] = np.sum(episodic_returns_e[:ep+1],axis=0)/(ep+1)
         # plot ave_returns
-        axs = fig_r.get_axes()
-        for i in range(num_pursuers):
-            axs[i].cla()
-            axs[i].plot(np.arange(ep)+1, sedimentary_returns_p[:ep,i], color='deepskyblue', label='pursuer '+str(i))
-            axs[i].legend()
-            axs[i].grid(color='grey', linewidth=0.25)
-        for i in range(num_evaders):
-            axs[num_pursuers+i].cla()
-            axs[num_pursuers+i].plot(np.arange(ep)+1, sedimentary_returns_e[:ep,i], color='orangered', label='evader '+str(i))
-            axs[num_pursuers+i].legend()
-            axs[num_pursuers+i].grid(color='grey', linewidth=0.25)
-        plt.pause(1./100)
+        # axs = fig_r.get_axes()
+        # for i in range(num_pursuers):
+        #     axs[i].cla()
+        #     axs[i].plot(np.arange(ep)+1, sedimentary_returns_p[:ep,i], color='deepskyblue', label='pursuer '+str(i))
+        #     axs[i].legend()
+        #     axs[i].grid(color='grey', linewidth=0.25)
+        # for i in range(num_evaders):
+        #     axs[num_pursuers+i].cla()
+        #     axs[num_pursuers+i].plot(np.arange(ep)+1, sedimentary_returns_e[:ep,i], color='orangered', label='evader '+str(i))
+        #     axs[num_pursuers+i].legend()
+        #     axs[num_pursuers+i].grid(color='grey', linewidth=0.25)
+        # plt.pause(1./100)
+        # fig_r.show()
+        # plt.show(block=False)
+        fig_r.clf()
+        axs = []
+        for i in range(num_pursuers+num_evaders):
+            axs.append(fig_r.add_subplot(num_pursuers+num_evaders,1,i+1))
+            if i < num_pursuers:
+                axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_p[:ep+1,i], color='deepskyblue', label='pursuer '+str(i))
+            else:
+                axs[i].plot(np.arange(ep+1)+1, sedimentary_returns_e[:ep+1,i-num_pursuers], color='orangered', label='evader '+str(i))
+            y_ticks = np.arange(-1.,1.4,0.4)
+            if not i==num_pursuers+num_evaders-1:
+                axs[i].set_xticklabels([])
+            axs[i].set_yticks(y_ticks)
+            axs[i].set_xlim(0, ep+1)
+            axs[i].set_ylim(y_ticks[0]-0.1, y_ticks[-1]+0.1)
+            axs[i].legend(loc='lower right')
+            axs[i].grid(color='grey', linewidth=0.2)
+        fig_r.suptitle('Averaged Returns')
+        plt.pause(1./1000)
         fig_r.show()
-        plt.show(block=False)
 
     # print("\n====\nep return: {} \nsed return: {}".format((episodic_returns_p,episodic_returns_e), (sedimentary_returns_p, sedimentary_returns_e))) # debug
     fig_path = os.path.join(os.path.dirname(agent_p.model_dir), 'ave_returns.png')
