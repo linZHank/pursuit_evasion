@@ -120,7 +120,7 @@ if __name__ == '__main__':
         # sedimentary returns
         sedimentary_returns_p[ep] = np.sum(episodic_returns_p[:ep+1],axis=0)/(ep+1)
         sedimentary_returns_e[ep] = np.sum(episodic_returns_e[:ep+1],axis=0)/(ep+1)
-        logging.info("\n===\nepisode: {} \nepisodic_returns: {} \nsedimentray_returns: {} \n===\n".format(ep+1, (episodic_returns_p, episodic_returns_e), (sedimentary_returns_p, sedimentary_returns_e)))
+        logging.info("\n===\nepisode: {} \nepisodic_returns: {} \nsedimentray_returns: {} \n===\n".format(ep+1, (episodic_returns_p[ep], episodic_returns_e[ep]), (sedimentary_returns_p[ep], sedimentary_returns_e[ep])))
         # uncomment following to plot episodic average returns, but will slow down training
         ###################################################################################
         # fig_r.clf()
