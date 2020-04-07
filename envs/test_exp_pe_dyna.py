@@ -15,7 +15,7 @@ if __name__ == '__main__':
         # env.render(pause=1./env.rate)
         for st in range(60):
             env.render(pause=1./env.rate)
-            actions = np.random.uniform(-5,5,size=(env.num_evaders+env.num_pursuers,2))
+            actions = np.random.randint(-2,3,size=(env.num_evaders+env.num_pursuers,2))
             obs, rew, done, info = env.step(actions)
             print("\n-\nepisode: {}, step: {} \nstate: {} \nactions \nstatus_evaders: {}, status_pursuers: {} \nreward: {}".format(ep+1, st+1, obs, actions, env.evaders['status'], env.pursuers['status'], rew))
             if info:

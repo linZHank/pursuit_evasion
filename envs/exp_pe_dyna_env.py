@@ -184,11 +184,14 @@ class PEDynaEnv(object):
                 self.evaders['velocity'].reshape(-1)
             ), axis=0
         )
-        # detect pe interfere
+        # detect captures
+        bonus = np.zeros(self.num_pursuers+self.num_evaders)
         for i in range(self.num_pursuers):
-            for j in range(self.num_evaders):
-                if self.distance_matrix[i,self.num_pursuers+j] <= self.interfere_radius:
-                    self._disable_evader(id=j)
+            if self.pursuers['status'][i] == 'active':
+                for j in range(self.num_evaders):
+                    if self.distance_matrix[i,-self.num_evaders+j] <= self.interfere_radius:
+                        self._disable_evader(id=j)
+                        bonus[i] = 10.
         # episode end reached
         if self.step_counter+1 >= self.max_steps:
             for i in range(self.num_pursuers):
@@ -197,20 +200,20 @@ class PEDynaEnv(object):
         done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
         done[:self.num_pursuers] = [s=='deactivated' for s in self.pursuers['status']]
         # reward = [-1.*d for d in done]
-        reward = -1.*np.array(done)
+        reward = -1.*np.array(done) + bonus
         if all(done[:self.num_pursuers]): # evaders win
-            reward[:self.num_pursuers] = -1. # [-1.]*self.num_pursuers
-            reward[-self.num_evaders:] = 1. # [1.]*self.num_evaders
+            # reward[:self.num_pursuers] = -1. # [-1.]*self.num_pursuers
+            # reward[-self.num_evaders:] = 1. # [1.]*self.num_evaders
             info = "All pursuers deceased"
         if all(done[-self.num_evaders:]): # pursuers win
-            reward[:self.num_pursuers] = 1. # [1.]*self.num_pursuers
-            reward[-self.num_evaders:] = -1. # [-1.]*self.num_evaders
+            # reward[:self.num_pursuers] = 1. # [1.]*self.num_pursuers
+            # reward[-self.num_evaders:] = -1. # [-1.]*self.num_evaders
             info = "All evaders deceased"
         self.step_counter += 1
 
         return obs, reward, done, info
 
-    def render(self,pause=2):
+    def render(self, pause=2):
         self.ax = self.fig.get_axes()[0]
         self.ax.cla()
         # plot world boundary
@@ -266,7 +269,7 @@ class PEDynaEnv(object):
         # plt.grid(color='grey', linestyle=':', linewidth=0.5)
         self.ax.grid(color='grey', linestyle=':', linewidth=0.5)
         # show
-        plt.pause(pause)
+        plt.pause(pause) # 1/16x to 16x
         self.fig.show()
         # plt.show(block=False)
         # plt.pause(pause)
