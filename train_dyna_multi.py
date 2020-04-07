@@ -14,25 +14,25 @@ from envs.pe_dyna_env import PEDynaEnv
 from agents.dqn import DQNAgent
 from agents.agent_utils import dqn_utils
 
-# import tensorflow as tf
-# # restrict GPU and memory growth
-# gpus = tf.config.experimental.list_physical_devices('GPU')
-# if gpus:
-#     try:
-#         # Currently, memory growth needs to be the same across GPUs
-#         for gpu in gpus:
-#             tf.config.experimental.set_memory_growth(gpu, True)
-#     except RuntimeError as e:
-#         # Visible devices must be set before GPUs have been initialized
-#         print(e)
-#     # Restrict TensorFlow to only use the first GPU
-#     try:
-#         tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
-#         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-#         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
-#     except RuntimeError as e:
-#         # Visible devices must be set before GPUs have been initialized
-#         print(e)
+import tensorflow as tf
+# restrict GPU and memory growth
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        # Currently, memory growth needs to be the same across GPUs
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        # Visible devices must be set before GPUs have been initialized
+        print(e)
+    # Restrict TensorFlow to only use the first GPU
+    try:
+        tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
+    except RuntimeError as e:
+        # Visible devices must be set before GPUs have been initialized
+        print(e)
 
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
@@ -72,7 +72,7 @@ if __name__ == '__main__':
             ia_p = np.zeros(num_pursuers, dtype=int)
             action_evaders = np.zeros((num_evaders,2))
             action_pursuers = np.zeros((num_pursuers,2))
-            for i in range(num_evaders):
+            for i in range(num_pursuers):
                 if not agent_done[i]:
                     ia_p[i], action_pursuers[i] = agent_p.epsilon_greedy(states[i])
             for j in range(num_evaders):
