@@ -5,6 +5,13 @@ from numpy import random
 import pickle
 
 
+def obs_to_states_solo(obs, num_pursuers):
+    states = np.zeros((num_pursuers,8))
+    for i in range(num_pursuers):
+        states[i] = np.concatenate((obs[i*4:i*4+4], obs[-4:]))
+
+    return states
+
 def obs_to_states(obs, num_pursuers, num_evaders):
     """
     Convert env's raw observation into agent's state input
