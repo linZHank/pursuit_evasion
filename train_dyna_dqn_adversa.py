@@ -72,7 +72,7 @@ if __name__ == '__main__':
             ia_p = np.zeros(num_pursuers, dtype=int)
             action_evaders = np.zeros((num_evaders,2))
             action_pursuers = np.zeros((num_pursuers,2))
-            for i in range(num_evaders):
+            for i in range(num_pursuers):
                 if not agent_done[i]:
                     ia_p[i], action_pursuers[i] = agent_p.epsilon_greedy(states[i])
             for j in range(num_evaders):
