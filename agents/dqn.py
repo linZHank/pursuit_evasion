@@ -56,8 +56,6 @@ class DQNAgent:
         self.dim_state = env.observation_space[0]
         self.actions = np.array([[0,1],[0,-1],[-1,0],[1,0]]) # [f_x,f_y]
         self.model_dir = os.path.join(sys.path[0], 'saved_models/dqn', env.name, self.date_time, str(name))
-        if not os.path.exists(self.model_dir):
-            os.makedirs(self.model_dir)
         self.save_frequency = 10000
         # hyper-parameters
         self.memory_cap = int(env.max_steps*1000)
