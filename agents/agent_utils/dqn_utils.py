@@ -48,7 +48,7 @@ def circular_action(pos, speed):
     rot = np.array([[0,-1], [1,0]]) # rotation matrix
     vec_vel = np.dot(rot, pos)
     norm_vec_vel = vec_vel/np.linalg.norm(vec_vel)
-    action = speed*norm_vec_vel.reshape(1,-1)
+    action = speed*norm_vec_vel # .reshape(1,-1)
 
     return action
 

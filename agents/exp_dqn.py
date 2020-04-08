@@ -48,7 +48,7 @@ class Memory:
         return list(zip(*batch))
 
 class DQNAgent:
-    def __init__(self, env, name, dim_state=8, actions=np.array([[0,1],[0,-1],[-1,0],[1,0]]), layer_sizes=[256,256], update_epoch=8000, learning_rate=0.0007, batch_size=8192, gamma =0.99, init_eps=1., final_eps=.1, warmup_episodes=1000):
+    def __init__(self, env, name, dim_state=8, actions=np.array([[0,0],[0,1],[0,-1],[-1,0],[1,0]]), layer_sizes=[256,256], update_epoch=8000, learning_rate=0.0007, batch_size=8192, gamma =0.99, init_eps=1., final_eps=.1, warmup_episodes=1000):
         # fixed
         self.name = name
         self.env = env
