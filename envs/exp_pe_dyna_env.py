@@ -197,8 +197,8 @@ class PEDynaEnv(object):
             for i in range(self.num_pursuers):
                 self._disable_pursuer(id=i)
         # update reward, done, info
-        done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
         done[:self.num_pursuers] = [s=='deactivated' for s in self.pursuers['status']]
+        done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
         # reward = [-1.*d for d in done]
         reward = -1.*np.array(done) + bonus
         if all(done[:self.num_pursuers]): # evaders win
