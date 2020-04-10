@@ -148,12 +148,16 @@ class PEDynaEnv(object):
         # step evaders
         for i in range(self.num_evaders):
             if self.evaders['status'][i] == 'active':
-                d_vel = np.clip(actions[-self.num_evaders+i]/self.mass_evader/self.rate, -2, 2) # don't go too fast
+                d_vel = actions[-self.num_evaders+i]/self.mass_evader/self.rate # don't go too fast
                 self.evaders['velocity'][i] += d_vel
+                self.evaders['velocity'][i] = np.clip(self.evaders['velocity'][i], -2, 2)
                 d_pos = self.evaders['velocity'][i]/self.rate
                 self.evaders['position'][i] += d_pos # possible next pos
                 if self._is_outbound(self.evaders['position'][i]) or self._is_occluded(self.evaders['position'][i]):
                     self._disable_evader(id=i)
+            else:
+                actions[-self.num_evaders+i] = np.zeros(2)
+                self.evaders['velocity'][i] = np.zeros(2)
         self.compute_distances()
         # evaders trajectory
         coords = [] # [x0,y0,x1,y1,...]
@@ -164,10 +168,14 @@ class PEDynaEnv(object):
         # step pursuers
         for i in range(self.num_pursuers):
             if self.pursuers['status'][i] == 'active':
-                self.pursuers['velocity'][i] += np.clip(actions[i]/self.mass_pursuer/self.rate, -2, 2)
+                self.pursuers['velocity'][i] += actions[i]/self.mass_pursuer/self.rate
+                self.pursuers['velocity'][i] = np.clip(self.pursuers['velocity'][i], -2, 2)
                 self.pursuers['position'][i] += self.pursuers['velocity'][i]/self.rate # possible next pos
                 if self._is_outbound(self.pursuers['position'][i]) or self._is_occluded(self.pursuers['position'][i]):
                     self._disable_pursuer(id=i)
+            else:
+                actions[i] = np.zeros(2)
+                self.pursuers['velocity'][i] = np.zeros(2)
         self.compute_distances()
         # pursuers trajectory
         coords = [] # [x0,y0,x1,y1,...]
