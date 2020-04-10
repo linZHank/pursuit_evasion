@@ -45,15 +45,15 @@ if __name__ == '__main__':
         env=env,
         name='pursuer',
         dim_state=8,
-        layer_sizes=[128],
-        learning_rate=0.01,
-        batch_size=4096,
-        gamma = 0.95,
-        update_epoch=1000,
+        layer_sizes=[128,128],
+        learning_rate=0.0001,
+        # batch_size=4096,
+        # gamma = 0.95,
+        # update_epoch=1000,
         warmup_episodes=100
     )
     #
-    num_episodes = 1000
+    num_episodes = 10000
     num_steps = 200
     num_samples = 1 # sample k times to train q-net
     episodic_returns_p = np.zeros((num_episodes, num_pursuers))

@@ -27,7 +27,7 @@ if gpus:
         print(e)
     # Restrict TensorFlow to only use the first GPU
     try:
-        tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+        tf.config.experimental.set_visible_devices(gpus[1], 'GPU')
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
     except RuntimeError as e:
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     agent_p = DQNAgent(
         env=env,
         name='pursuer',
-        dim_state=8,
+        dim_state=12,
         layer_sizes=[128,128],
         learning_rate=0.0001,
         # update_epoch=1000,
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         for st in range(num_steps):
             # env.render(pause=1./env.rate) # render env will slow down training
             # convert obs to states
-            states = dqn_utils.obs_to_states_solo(obs, num_pursuers)
+            states = dqn_utils.obs_to_states(obs, num_pursuers, num_evaders)
             # take actions, no action will take if deactivated
             i_a = np.zeros(num_pursuers+num_evaders, dtype=int)
             actions = np.zeros((num_pursuers+num_evaders,2))
@@ -83,13 +83,16 @@ if __name__ == '__main__':
                     i_a[i], actions[i] = agent_p.epsilon_greedy(states[i])
             # step env
             next_obs, reward, done, info = env.step(actions)
-            next_states = dqn_utils.obs_to_states_solo(next_obs, num_pursuers)
+            next_states = dqn_utils.obs_to_states(next_obs, num_pursuers, num_evaders)
             # adjust reward then store transitions
             for i in range(env.num_pursuers):
                 if not agent_done[i]: # env.pursuers['status'][i] == 'active:
                     if reward[i] > 1 or reward[i] <= -1.:
                         agent_p.replay_memory.store([states[i], i_a[i], reward[i], True, next_states[i]])
                     else:
+                        eff_d = (env.distance_matrix[i,:num_pursuers]<env.interfere_radius)*env.distance_matrix[i,:num_pursuers]
+                        if not np.nansum(eff_d)==0:
+                            reward[i] += np.clip(-.1/np.nansum(eff_d), -(num_pursuers-1), 0)
                         agent_p.replay_memory.store([states[i], i_a[i], reward[i], False, next_states[i]])
                 else: # agent deactivated
                     reward[i] = 0.
