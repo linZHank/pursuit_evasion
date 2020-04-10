@@ -6,9 +6,10 @@ import pickle
 
 
 def obs_to_states_solo(obs, num_pursuers):
+    assert obs.shape[0]==4*(num_pursuers+1)
     states = np.zeros((num_pursuers,8))
     for i in range(num_pursuers):
-        states[i] = np.concatenate((obs[i*4:i*4+4], obs[-4:]))
+        states[i] = np.concatenate((obs[[i*2,i*2+1,num_pursuers*2+i*2,num_pursuers*2+i*2+1]], obs[-4:]))
 
     return states
 
