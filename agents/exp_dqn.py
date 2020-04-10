@@ -205,3 +205,26 @@ class DQNAgent:
         with open(memory_path, 'rb') as f:
             self.replay_memory = pickle.load(f)
         logging.warning("Replay Buffer Loaded")
+
+    def save_params(self):
+        hyper_params = dict(
+            dim_state = self.dim_state,
+            actions = self.actions,
+            memory_cap = self.memory_cap,
+            layer_sizes = self.layer_sizes,
+            update_epoch = self.update_epoch,
+            learning_rate = self.learning_rate,
+            batch_size = self.batch_size,
+            gamma = self.gamma,
+            init_eps = self.init_eps,
+            final_eps = self.final_eps,
+            warmup_episodes = self.warmup_episodes,
+            epsilon = self.epsilon,
+            epoch_counter = self.epoch_counter
+        )
+        params_path = os.path.join(self.model_dir, 'hyper_params.pkl')
+        if not os.path.exists(os.path.dirname(params_path)):
+            os.makedirs(os.path.dirname(params_path))
+        with open(params_path, 'wb') as f:
+            pickle.dump(hyper_params, f, pickle.HIGHEST_PROTOCOL)
+        logging.info("Hyper-parameters saved at {}".format(params_path))
