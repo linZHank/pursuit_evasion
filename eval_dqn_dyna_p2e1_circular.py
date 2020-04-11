@@ -19,10 +19,14 @@ logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
 if __name__ == '__main__':
     num_pursuers, num_evaders = 2, 1
     env=PEDynaEnv(num_evaders=num_evaders, num_pursuers=num_pursuers)
-    agent_p = DQNAgent(env=env, name='p_eval')
+    agent_p = DQNAgent(
+        env=env,
+        name='p_eval',
+        # dim_state=12
+    )
     # agent_e = DQNAgent(env=env, name='e_0')
     model_dir = sys.path[0]+'/saved_models/dqn/dyna_p2e1/2020-04-09-20-59/pursuer/models'
-    model_path = os.path.join(model_dir,'340000.h5')
+    model_path = os.path.join(model_dir,'1206004.h5')
     # model_path_e0 = os.path.join(model_dir,'e_0','models','518810.h5')
     agent_p.load_model(model_path)
     # agent_e0.load_model(model_path_e0)
@@ -34,9 +38,13 @@ if __name__ == '__main__':
     pwin_counter, ewin_counter = 0, 0
 
     for ep in range(num_episodes):
+        # pursuers spawn
+        locs = np.array([[-4,-4], [-4,4], [4,-4], [4,4]])
+        env.pursuers_spawning_pool = locs[np.random.randint(4,size=2)] + np.random.randn(2,2)/10
+        # evader spawn
         theta_e = random.uniform(-pi,pi)
         env.evaders_spawning_pool[0] = np.array([3*np.cos(theta_e),3*np.sin(theta_e)])
-        speed_evader = 0.4
+        speed_evader = -0.4
         total_reward_p = []
         # reset env and get state from it
         agent_done = [False]*(num_evaders+num_pursuers) # agent done is one step after env done, so that -1 reward can be recorded
@@ -45,6 +53,7 @@ if __name__ == '__main__':
             env.render(pause=1./env.rate)
             # convert obs to states
             states = dqn_utils.obs_to_states_solo(obs, num_pursuers)
+            # states = dqn_utils.obs_to_states(obs, num_pursuers, num_evaders)
             # take actions, no action will take if deactivated
             i_a = np.zeros(num_pursuers+num_evaders, dtype=int)
             actions = np.zeros((num_pursuers+num_evaders,2))
@@ -55,6 +64,7 @@ if __name__ == '__main__':
             # step env
             next_obs, reward, done, info = env.step(actions)
             next_states = dqn_utils.obs_to_states_solo(next_obs, num_pursuers)
+            # next_states = dqn_utils.obs_to_states(next_obs, num_pursuers, num_evaders)
             # adjust reward then store transitions
             for i in range(env.num_pursuers):
                 if agent_done[i]: # env.pursuers['status'][i] == 'active:
