@@ -204,6 +204,7 @@ class PEDynaEnv(object):
         if self.step_counter+1 >= self.max_steps:
             for i in range(self.num_pursuers):
                 self._disable_pursuer(id=i)
+            bonus[-self.num_evaders:] = 10.*np.logical_not(np.array(done[-self.num_evaders:]))
         # update reward, done, info
         done[:self.num_pursuers] = [s=='deactivated' for s in self.pursuers['status']]
         done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
@@ -211,7 +212,7 @@ class PEDynaEnv(object):
         reward = -1.*np.array(done) + bonus
         if all(done[:self.num_pursuers]): # evaders win
             # reward[:self.num_pursuers] = -1. # [-1.]*self.num_pursuers
-            reward[-self.num_evaders:] = [not(d)*10. for d in done[-self.num_evaders:]] # [1.]*self.num_evaders
+            reward[-self.num_evaders:] = [not(d)*1. for d in done[-self.num_evaders:]] # [1.]*self.num_evaders
             info = "All pursuers deceased"
         if all(done[-self.num_evaders:]): # pursuers win
             # reward[:self.num_pursuers] = 1. # [1.]*self.num_pursuers
