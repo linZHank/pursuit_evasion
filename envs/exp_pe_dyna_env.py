@@ -211,7 +211,7 @@ class PEDynaEnv(object):
         reward = -1.*np.array(done) + bonus
         if all(done[:self.num_pursuers]): # evaders win
             # reward[:self.num_pursuers] = -1. # [-1.]*self.num_pursuers
-            reward[-self.num_evaders:] = [not(d)*1. for d in done[-self.num_evaders:]] # [1.]*self.num_evaders
+            reward[-self.num_evaders:] = [not(d)*10. for d in done[-self.num_evaders:]] # [1.]*self.num_evaders
             info = "All pursuers deceased"
         if all(done[-self.num_evaders:]): # pursuers win
             # reward[:self.num_pursuers] = 1. # [1.]*self.num_pursuers
