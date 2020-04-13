@@ -10,8 +10,8 @@ from numpy import pi
 from datetime import datetime
 import matplotlib.pyplot as plt
 
-from envs.exp_pe_dyna_env import PEDynaEnv
-from agents.exp_dqn import DQNAgent
+from envs.pe_dyna_env import PEDynaEnv
+from agents.dqn import DQNAgent
 from agents.agent_utils import dqn_utils
 
 import tensorflow as tf
@@ -199,8 +199,8 @@ if __name__ == '__main__':
     agent_p.save_model()
     agent_e.save_model()
     # save replay buffer
-    agent_p.save_memory()
-    agent_e.save_memory()
+    # agent_p.save_memory()
+    # agent_e.save_memory()
     # save hyper-parameters
     agent_p.save_params()
     agent_e.save_params()

@@ -48,25 +48,25 @@ class Memory:
         return list(zip(*batch))
 
 class DQNAgent:
-    def __init__(self, env, name):
+    def __init__(self, env, name, dim_state=8, actions=np.array([[0,0],[0,1],[0,-1],[-1,0],[1,0]]), layer_sizes=[256,256], update_epoch=8000, learning_rate=0.0007, batch_size=8192, gamma =0.99, init_eps=1., final_eps=.1, warmup_episodes=1000):
         # fixed
         self.name = name
         self.env = env
         self.date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
-        self.dim_state = env.observation_space[0]
-        self.actions = np.array([[0,1],[0,-1],[-1,0],[1,0]]) # [f_x,f_y]
         self.model_dir = os.path.join(sys.path[0], 'saved_models/dqn', env.name, self.date_time, str(name))
         self.save_frequency = 10000
         # hyper-parameters
+        self.dim_state = dim_state
+        self.actions = actions # [f_x,f_y]
         self.memory_cap = int(env.max_steps*1000)
-        self.layer_sizes = [256,256]
-        self.update_epoch = 8000
-        self.learning_rate = 0.0003
-        self.batch_size = 8192
-        self.gamma = 0.99
-        self.init_eps = 1.
-        self.final_eps = 0.1
-        self.warmup_episodes = 1000
+        self.layer_sizes = layer_sizes
+        self.update_epoch = update_epoch
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
+        self.gamma = gamma
+        self.init_eps = init_eps
+        self.final_eps = final_eps
+        self.warmup_episodes = warmup_episodes
         # variables
         self.epsilon = 1
         self.epoch_counter = 0
@@ -205,3 +205,26 @@ class DQNAgent:
         with open(memory_path, 'rb') as f:
             self.replay_memory = pickle.load(f)
         logging.warning("Replay Buffer Loaded")
+
+    def save_params(self):
+        hyper_params = dict(
+            dim_state = self.dim_state,
+            actions = self.actions,
+            memory_cap = self.memory_cap,
+            layer_sizes = self.layer_sizes,
+            update_epoch = self.update_epoch,
+            learning_rate = self.learning_rate,
+            batch_size = self.batch_size,
+            gamma = self.gamma,
+            init_eps = self.init_eps,
+            final_eps = self.final_eps,
+            warmup_episodes = self.warmup_episodes,
+            epsilon = self.epsilon,
+            epoch_counter = self.epoch_counter
+        )
+        params_path = os.path.join(self.model_dir, 'hyper_params.pkl')
+        if not os.path.exists(os.path.dirname(params_path)):
+            os.makedirs(os.path.dirname(params_path))
+        with open(params_path, 'wb') as f:
+            pickle.dump(hyper_params, f, pickle.HIGHEST_PROTOCOL)
+        logging.info("Hyper-parameters saved at {}".format(params_path))

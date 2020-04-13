@@ -39,8 +39,8 @@ class PEDynaEnv(object):
         # pursuers and evaders properties
         self.radius_evader = 0.1
         self.radius_pursuer = 0.1
-        self.mass_pursuer = 0.3
-        self.mass_evader = 0.3
+        self.mass_pursuer = 0.4
+        self.mass_evader = 0.4
         self.observation_space = (num_evaders*4+num_pursuers*4,) # x,y,vx,vy
         self.action_space = (2,) # fx,fy
         # variables
@@ -128,12 +128,11 @@ class PEDynaEnv(object):
 
         return obs
 
-    def step(self, action_evaders, action_pursuers):
+    def step(self, actions):
         """
         Agents take velocity command
         Args:
-            action_evaders: array([[fx_e0,fy_e0],...])
-            action_pursuers: array([[fx_p0,fy_p0],...])
+            actions: array([[f_p0_x,f_p0_y],...,[f_e0_x,f_e0_y],...])
         Returns:
             obs: array([x_p0,y_p0,...,v_x_p0,v_y_p0,...,x_e0,y_e0,...,v_x_e0,v_y_e0])
             reward:
@@ -141,22 +140,24 @@ class PEDynaEnv(object):
             info: ''
         """
         # make sure actions are in right shapes
-        assert action_evaders.shape == self.evaders['velocity'].shape
-        assert action_pursuers.shape == self.pursuers['velocity'].shape
+        assert actions.shape == (self.num_pursuers+self.num_evaders, 2)
         # default reward, done, info
         reward, done, info = np.zeros(self.num_pursuers+self.num_evaders), [False]*(self.num_pursuers+self.num_evaders), ''
         # set limitation for velocity commands
-        action_evaders = np.clip(action_evaders, -2, 2) # N
-        action_pursuers = np.clip(action_pursuers, -2, 2)
+        actions = np.clip(actions, -2, 2) # N
         # step evaders
         for i in range(self.num_evaders):
             if self.evaders['status'][i] == 'active':
-                d_vel = action_evaders[i]/self.mass_evader/self.rate
+                d_vel = actions[-self.num_evaders+i]/self.mass_evader/self.rate # don't go too fast
                 self.evaders['velocity'][i] += d_vel
+                self.evaders['velocity'][i] = np.clip(self.evaders['velocity'][i], -2, 2)
                 d_pos = self.evaders['velocity'][i]/self.rate
                 self.evaders['position'][i] += d_pos # possible next pos
                 if self._is_outbound(self.evaders['position'][i]) or self._is_occluded(self.evaders['position'][i]):
                     self._disable_evader(id=i)
+            else:
+                actions[-self.num_evaders+i] = np.zeros(2)
+                self.evaders['velocity'][i] = np.zeros(2)
         self.compute_distances()
         # evaders trajectory
         coords = [] # [x0,y0,x1,y1,...]
@@ -167,10 +168,14 @@ class PEDynaEnv(object):
         # step pursuers
         for i in range(self.num_pursuers):
             if self.pursuers['status'][i] == 'active':
-                self.pursuers['velocity'][i] += action_pursuers[i]/self.mass_pursuer/self.rate
+                self.pursuers['velocity'][i] += actions[i]/self.mass_pursuer/self.rate
+                self.pursuers['velocity'][i] = np.clip(self.pursuers['velocity'][i], -2, 2)
                 self.pursuers['position'][i] += self.pursuers['velocity'][i]/self.rate # possible next pos
                 if self._is_outbound(self.pursuers['position'][i]) or self._is_occluded(self.pursuers['position'][i]):
                     self._disable_pursuer(id=i)
+            else:
+                actions[i] = np.zeros(2)
+                self.pursuers['velocity'][i] = np.zeros(2)
         self.compute_distances()
         # pursuers trajectory
         coords = [] # [x0,y0,x1,y1,...]
@@ -187,33 +192,37 @@ class PEDynaEnv(object):
                 self.evaders['velocity'].reshape(-1)
             ), axis=0
         )
-        # detect pe interfere
+        # detect captures
+        bonus = np.zeros(self.num_pursuers+self.num_evaders)
         for i in range(self.num_pursuers):
-            for j in range(self.num_evaders):
-                if self.distance_matrix[i,self.num_pursuers+j] <= self.interfere_radius:
-                    self._disable_evader(id=j)
+            if self.pursuers['status'][i] == 'active':
+                for j in range(self.num_evaders):
+                    if self.distance_matrix[i,-self.num_evaders+j] <= self.interfere_radius:
+                        self._disable_evader(id=j)
+                        bonus[i] = 10.
         # episode end reached
         if self.step_counter+1 >= self.max_steps:
             for i in range(self.num_pursuers):
                 self._disable_pursuer(id=i)
+            bonus[-self.num_evaders:] = 10.*np.logical_not(np.array(done[-self.num_evaders:]))
         # update reward, done, info
-        done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
         done[:self.num_pursuers] = [s=='deactivated' for s in self.pursuers['status']]
+        done[-self.num_evaders:] = [s=='deactivated' for s in self.evaders['status']]
         # reward = [-1.*d for d in done]
-        reward = -1.*np.array(done)
+        reward = -1.*np.array(done) + bonus
         if all(done[:self.num_pursuers]): # evaders win
-            reward[:self.num_pursuers] = -1. # [-1.]*self.num_pursuers
-            reward[-self.num_evaders:] = 1. # [1.]*self.num_evaders
+            # reward[:self.num_pursuers] = -1. # [-1.]*self.num_pursuers
+            reward[-self.num_evaders:] = [not(d)*1. for d in done[-self.num_evaders:]] # [1.]*self.num_evaders
             info = "All pursuers deceased"
         if all(done[-self.num_evaders:]): # pursuers win
-            reward[:self.num_pursuers] = 1. # [1.]*self.num_pursuers
-            reward[-self.num_evaders:] = -1. # [-1.]*self.num_evaders
+            # reward[:self.num_pursuers] = 1. # [1.]*self.num_pursuers
+            # reward[-self.num_evaders:] = -1. # [-1.]*self.num_evaders
             info = "All evaders deceased"
         self.step_counter += 1
 
         return obs, reward, done, info
 
-    def render(self,pause=2):
+    def render(self, pause=2):
         self.ax = self.fig.get_axes()[0]
         self.ax.cla()
         # plot world boundary
@@ -269,7 +278,7 @@ class PEDynaEnv(object):
         # plt.grid(color='grey', linestyle=':', linewidth=0.5)
         self.ax.grid(color='grey', linestyle=':', linewidth=0.5)
         # show
-        plt.pause(pause)
+        plt.pause(pause) # 1/16x to 16x
         self.fig.show()
         # plt.show(block=False)
         # plt.pause(pause)

@@ -5,6 +5,14 @@ from numpy import random
 import pickle
 
 
+def obs_to_states_solo(obs, num_pursuers):
+    assert obs.shape[0]==4*(num_pursuers+1)
+    states = np.zeros((num_pursuers,8))
+    for i in range(num_pursuers):
+        states[i] = np.concatenate((obs[[i*2,i*2+1,num_pursuers*2+i*2,num_pursuers*2+i*2+1]], obs[-4:]))
+
+    return states
+
 def obs_to_states(obs, num_pursuers, num_evaders):
     """
     Convert env's raw observation into agent's state input
@@ -13,21 +21,22 @@ def obs_to_states(obs, num_pursuers, num_evaders):
     Returns:
         state: array([[x_p0,y_p0,...], [x_p1,y_p1,...], ..., [x_en,y_en,...]])
     """
-    states = np.tile(obs, (num_pursuers+num_evaders,1))
+    states = np.tile(obs.copy(), (num_pursuers+num_evaders,1))
     # reorder pursuers
     for i in range(num_pursuers):
-        s = obs
-        s[[0,1,i*2,i*2+1]] = s[[i*2,i*2+1,0,1]] # swap pos
-        s[[num_pursuers*2,num_pursuers*2+1,num_pursuers*2+i*2,num_pursuers*2+i*2+1]] = s[[num_pursuers*2+i*2,num_pursuers*2+i*2+1,num_pursuers*2,num_pursuers*2+1]] # swap vel
-        states[i] = s
+        sp = obs.copy()
+        sp[[0,1,i*2,i*2+1]] = sp[[i*2,i*2+1,0,1]] # swap pos
+        sp[[num_pursuers*2,num_pursuers*2+1,num_pursuers*2+i*2,num_pursuers*2+i*2+1]] = sp[[num_pursuers*2+i*2,num_pursuers*2+i*2+1,num_pursuers*2,num_pursuers*2+1]] # swap vel
+        states[i] = sp
     # reorder evaders
     for i in range(num_evaders):
-        s = obs
-        s[[num_pursuers*4,num_pursuers*4+1,num_pursuers*4+i*2,num_pursuers*4+i*2+1]] = s[[num_pursuers*4+i*2,num_pursuers*4+i*2+1,num_pursuers*4,num_pursuers*4+1]] # swap pos
-        s[[num_pursuers*4+num_evaders*2,num_pursuers*4+num_evaders*2+1,num_pursuers*4+num_evaders*2+i*2,num_pursuers*4+num_evaders*2+i*2+1]] = s[[num_pursuers*4+num_evaders*2+i*2,num_pursuers*4+num_evaders*2+i*2+1,num_pursuers*4+num_evaders*2,num_pursuers*4+num_evaders*2+1]] # swap vel
-        states[num_pursuers+i] = s
+        se = obs.copy()
+        se[[num_pursuers*4,num_pursuers*4+1,num_pursuers*4+i*2,num_pursuers*4+i*2+1]] = se[[num_pursuers*4+i*2,num_pursuers*4+i*2+1,num_pursuers*4,num_pursuers*4+1]] # swap pos
+        se[[num_pursuers*4+num_evaders*2,num_pursuers*4+num_evaders*2+1,num_pursuers*4+num_evaders*2+i*2,num_pursuers*4+num_evaders*2+i*2+1]] = se[[num_pursuers*4+num_evaders*2+i*2,num_pursuers*4+num_evaders*2+i*2+1,num_pursuers*4+num_evaders*2,num_pursuers*4+num_evaders*2+1]] # swap vel
+        states[num_pursuers+i] = se
 
     return states
+
 
 def circular_action(pos, speed):
     """
