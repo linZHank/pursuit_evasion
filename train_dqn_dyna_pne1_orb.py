@@ -27,7 +27,7 @@ if gpus:
         print(e)
     # Restrict TensorFlow to only use the first GPU
     try:
-        tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+        tf.config.experimental.set_visible_devices(gpus[1], 'GPU')
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
     except RuntimeError as e:
@@ -39,14 +39,14 @@ logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
 
 
 if __name__ == '__main__':
-    num_pursuers, num_evaders = 2, 1
+    num_pursuers, num_evaders = 8, 1
     env=PEDynaEnv(num_evaders=num_evaders, num_pursuers=num_pursuers)
     agent_p = DQNAgent(
         env=env,
         name='pursuer',
         dim_state=8,
         layer_sizes=[128,128],
-        learning_rate=0.0001,
+        learning_rate=0.001,
         # update_epoch=1000,
         warmup_episodes=100
     )
@@ -58,7 +58,7 @@ if __name__ == '__main__':
     sedimentary_returns_p = np.zeros((num_episodes, num_pursuers))
     # step_counter = [1, 1, 1]
     pwin_counter, ewin_counter = 0, 0
-    fig_r = plt.figure(figsize=(12,8))
+    fig_r = plt.figure(figsize=(12,10))
 
     for ep in range(num_episodes):
         theta_e = random.uniform(-pi,pi)
@@ -69,7 +69,7 @@ if __name__ == '__main__':
         # reset env and get state from it
         agent_done = [False]*(num_evaders+num_pursuers) # agent done is one step after env done, so that -1 reward can be recorded
         obs = env.reset()
-        agent_p.linear_epsilon_decay(episode=ep, decay_period=2000) #int(num_episodes/4))
+        agent_p.linear_epsilon_decay(episode=ep, decay_period=1000) #int(num_episodes/4))
         for st in range(num_steps):
             # env.render(pause=1./env.rate) # render env will slow down training
             # convert obs to states
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     # save model
     agent_p.save_model()
     # save replay buffer
-    # agent_p.save_memory()
+    agent_p.save_memory()
     # save hyper-parameters
     agent_p.save_params()
     # save returns

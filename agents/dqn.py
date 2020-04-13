@@ -54,7 +54,7 @@ class DQNAgent:
         self.env = env
         self.date_time = datetime.now().strftime("%Y-%m-%d-%H-%M")
         self.model_dir = os.path.join(sys.path[0], 'saved_models/dqn', env.name, self.date_time, str(name))
-        self.save_frequency = 10000
+        self.save_frequency = 20000
         # hyper-parameters
         self.dim_state = dim_state
         self.actions = actions # [f_x,f_y]
