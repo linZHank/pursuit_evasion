@@ -36,17 +36,16 @@ class PEDynaEnv(object):
             position = np.array([[-2,-self.world_length/2],[-2,self.world_length/2-1.5]]),
             dimension = np.array([[4,1.5],[4,1.5]])
         )
-        # pursuers and evaders properties
-        self.radius_evader = 0.1
-        self.radius_pursuer = 0.1
-        self.mass_pursuer = 0.4
-        self.mass_evader = 0.4
         self.observation_space = (num_evaders*4+num_pursuers*4,) # x,y,vx,vy
         self.action_space = (2,) # fx,fy
-        # variables
+        self.step_counter = 0
+        # pursuers and evaders properties
+        self.radius_pursuer = 0.1
+        self.radius_evader = 0.1
+        self.mass_pursuer = 0.4
+        self.mass_evader = 0.4
         self.evaders_spawning_pool = np.zeros([num_evaders, 2]) # x,y,theta
         self.pursuers_spawning_pool = np.zeros([num_pursuers, 2])
-        self.step_counter = 0
         self.evaders = dict(
             names = ['e_'+str(i) for i in range(num_evaders)],
             position = np.empty((num_evaders, 2)),
@@ -64,7 +63,6 @@ class PEDynaEnv(object):
         self.distance_matrix = np.zeros((num_evaders+num_pursuers,num_evaders+num_pursuers))
         self.distance_matrix[:] = np.nan
         # create figure
-        # self.fig, self.ax = plt.subplots(figsize=(10, 10))
         self.fig = plt.figure(figsize=(10, 10))
         self.ax = ax1 = self.fig.add_subplot(111)
 

@@ -91,20 +91,6 @@ class DQNAgent:
         self.replay_memory = Memory(memory_cap=self.memory_cap)
         # self.replay_memory = deque(maxlen=self.memory_cap)
 
-    # def sample_batch(self):
-    #     # Select batch
-    #     if len(self.replay_memory) < self.batch_size:
-    #         batch = random.sample(self.replay_memory, len(self.replay_memory))
-    #     else:
-    #         batch = random.sample(self.replay_memory, self.batch_size)
-    #     print("A batch of memories are sampled with size: {}".format(self.batch_size))
-    #
-    #     return list(zip(*batch)) # unzip batch
-
-    # def store(self, experience):
-    #     self.replay_memory.append(experience)
-    #     print("experience: {} stored to memory".format(experience))
-
     def epsilon_greedy(self, state):
         """
         If a random number(0,1) beats epsilon, return index of largest Q-value.
