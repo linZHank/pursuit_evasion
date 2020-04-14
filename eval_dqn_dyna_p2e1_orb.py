@@ -25,8 +25,8 @@ if __name__ == '__main__':
         # dim_state=12
     )
     # agent_e = DQNAgent(env=env, name='e_0')
-    model_dir = sys.path[0]+'/saved_models/dqn/dyna_p2e1/2020-04-09-20-59/pursuer/models'
-    model_path = os.path.join(model_dir,'1206004.h5')
+    model_dir = sys.path[0]+'/saved_models/dqn/dyna_p8e1/2020-04-12-23-31/pursuer/models'
+    model_path = os.path.join(model_dir,'300000.h5')
     # model_path_e0 = os.path.join(model_dir,'e_0','models','518810.h5')
     agent_p.load_model(model_path)
     # agent_e0.load_model(model_path_e0)

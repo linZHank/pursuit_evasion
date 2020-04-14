@@ -10,7 +10,7 @@ from numpy import pi
 from datetime import datetime
 import matplotlib.pyplot as plt
 
-from envs.pe_dyna_env import PEDynaEnv
+from envs.pe_kine_env import PEKineEnv
 from agents.dqn import DQNAgent
 from agents.agent_utils import dqn_utils
 
@@ -26,34 +26,35 @@ if gpus:
         # Visible devices must be set before GPUs have been initialized
         print(e)
     # Restrict TensorFlow to only use the first GPU
-    try:
-        tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
-        logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-        print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
-    except RuntimeError as e:
-        # Visible devices must be set before GPUs have been initialized
-        print(e)
+    # try:
+    #     tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+    #     logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+    #     print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
+    # except RuntimeError as e:
+    #     # Visible devices must be set before GPUs have been initialized
+    #     print(e)
 
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
 
 
 if __name__ == '__main__':
-    num_pursuers, num_evaders = 8, 1
-    env=PEDynaEnv(num_evaders=num_evaders, num_pursuers=num_pursuers)
+    num_pursuers, num_evaders = 4, 1
+    env=PEKineEnv(num_evaders=num_evaders, num_pursuers=num_pursuers)
     agent_p = DQNAgent(
         env=env,
         name='pursuer',
-        dim_state=8,
-        layer_sizes=[128,128],
-        learning_rate=0.001,
+        dim_state=4,
+        actions=np.array([[0,2],[0,-2],[-2,0],[2,0]]),
+        layer_sizes=[64,64],
+        learning_rate=0.0003,
         # update_epoch=1000,
         warmup_episodes=100
     )
     #
-    num_episodes = 10000
-    num_steps = 200
-    num_samples = 1 # sample k times to train q-net
+    num_episodes = 8000
+    num_steps = 400
+    num_samples = 2 # sample k times to train q-net
     episodic_returns_p = np.zeros((num_episodes, num_pursuers))
     sedimentary_returns_p = np.zeros((num_episodes, num_pursuers))
     # step_counter = [1, 1, 1]
@@ -63,27 +64,27 @@ if __name__ == '__main__':
     for ep in range(num_episodes):
         theta_e = random.uniform(-pi,pi)
         env.evaders_spawning_pool[0] = np.array([3*np.cos(theta_e),3*np.sin(theta_e)])
-        speed_evader = np.random.uniform(-np.pi/2, np.pi/2)
+        # speed_evader = np.random.uniform(-np.pi/2, np.pi/2)
         # step-wise reward storage
         total_reward_p = []
         # reset env and get state from it
         agent_done = [False]*(num_evaders+num_pursuers) # agent done is one step after env done, so that -1 reward can be recorded
         obs = env.reset()
-        agent_p.linear_epsilon_decay(episode=ep, decay_period=1000) #int(num_episodes/4))
+        agent_p.linear_epsilon_decay(episode=ep, decay_period=800) #int(num_episodes/4))
         for st in range(num_steps):
             # env.render(pause=1./env.rate) # render env will slow down training
             # convert obs to states
-            states = dqn_utils.obs_to_states_solo(obs, num_pursuers)
+            states = dqn_utils.obs_to_states_solo_kine(obs, num_pursuers)
             # take actions, no action will take if deactivated
             i_a = np.zeros(num_pursuers+num_evaders, dtype=int)
             actions = np.zeros((num_pursuers+num_evaders,2))
-            env.evaders['velocity'][0] = dqn_utils.circular_action(env.evaders['position'][0], speed_evader)
+            # actions[-1] = dqn_utils.circular_action(env.evaders['position'][0], speed_evader)
             for i in range(num_pursuers):
                 if not agent_done[i]:
                     i_a[i], actions[i] = agent_p.epsilon_greedy(states[i])
             # step env
             next_obs, reward, done, info = env.step(actions)
-            next_states = dqn_utils.obs_to_states_solo(next_obs, num_pursuers)
+            next_states = dqn_utils.obs_to_states_solo_kine(next_obs, num_pursuers)
             # adjust reward then store transitions
             for i in range(env.num_pursuers):
                 if not agent_done[i]: # env.pursuers['status'][i] == 'active:

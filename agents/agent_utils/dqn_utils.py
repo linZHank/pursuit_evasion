@@ -4,6 +4,13 @@ import numpy as np
 from numpy import random
 import pickle
 
+def obs_to_states_solo_kine(obs, num_pursuers):
+    assert obs.shape[0]==2*(num_pursuers+1)
+    states = np.zeros((num_pursuers,4))
+    for i in range(num_pursuers):
+        states[i] = np.concatenate((obs[[i*2,i*2+1]], obs[-2:]))
+
+    return states
 
 def obs_to_states_solo(obs, num_pursuers):
     assert obs.shape[0]==4*(num_pursuers+1)
