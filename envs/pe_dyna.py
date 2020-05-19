@@ -15,13 +15,13 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, RegularPolygon, Polygon
 from matplotlib.collections import PatchCollection
 # import matplotlib.image as mpimg
-import cv2
+# import cv2
 
 class PEDyna(object):
     """
-    Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=8)
+    Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=4)
     """
-    def __init__(self, train=True, num_evaders=1, num_pursuers=1, num_ellipses=1, num_polygons=1, resolution=(100, 100)):
+    def __init__(self, resolution=(100, 100)):
         assert isinstance(num_evaders, int)
         assert isinstance(num_pursuers, int)
         assert num_evaders >= 1
@@ -30,40 +30,19 @@ class PEDyna(object):
         self.name='dyna_mpme' # dynamic multi-pursuer multi-evader
         self.world_length = 10
         self.resolution = resolution
-        self.num_evaders = num_evaders
-        self.num_pursuers = num_pursuers
-        self.num_ellipses = num_ellipses
-        self.num_polygons = num_polygons
-        if train:
-            self.mode = 'train'
-            self.num_evaders = random.randint(1,9)
-            self.num_pursuers = random.randint(1,9)
-            self.num_ellipses = random.randint(1,7)
-            self.num_polygons = random.randint(1,7)
-        else:
-            self.mode = 'eval'
+        self.num_evaders = random.randint(1,5)
+        self.num_pursuers = random.randint(1,5)
+        self.num_ellipses = random.randint(1,7)
+        self.num_polygons = random.randint(1,7)
+        self.obstacles = []
         # next 7 lines compute grid coordinates
         step_x, step_y = self.world_length/resolution[0], self.world_length/resolution[1]
         x_coords = np.linspace((-self.world_length+step_x)/2, (self.world_length-step_x)/2, resolution[0])
-        y_coords = -np.linspace((-self.world_length+step_y)/2, (self.world_length-step_y)/2, resolution[1]) # don't forget the negative sign, so that y can go through from top to bottom
+        y_coords = -np.linspace((-self.world_length+step_y)/2, (self.world_length-step_y)/2, resolution[1]) # don't forget the negative sign, so that y goes from top to bottom
         self.pix_coords = np.zeros((resolution[0]*resolution[1], 2))
         for i in range(len(x_coords)):
             for j in range(len(y_coords)):
                 self.pix_coords[i*len(x_coords)+j] = np.array([x_coords[i], y_coords[j]])
-        # Place obstacles: you can add more shapes in the section below
-        self.obstacles = []
-        for i in range(self.num_ellipses):
-            ellipse = Ellipse(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), width=random.uniform(self.world_length/10, self.world_length/7), height=random.uniform(self.world_length/10, self.world_length/7), angle=random.uniform(0,360), ec='k', fc='grey')
-            self.obstacles.append(ellipse)
-        for i in range(self.num_polygons):
-            reg_polygon = RegularPolygon(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), numVertices=random.randint(4,7), radius=random.uniform(self.world_length/10, self.world_length/7), orientation=random.uniform(-pi,pi), ec='k', fc='grey')
-            self.obstacles.append(reg_polygon)
-        # generate obstacle map
-        obst_pix = np.array([False]*self.pix_coords.shape[0])
-        for op in self.obstacles:
-            obst_pix = np.logical_or(obst_pix, op.contains_points(self.pix_coords, radius=self.world_length/np.min(resolution)/2))
-        self.obst_map = obst_pix.reshape(resolution)
-
         # Prepare renderer
         self.fig = plt.figure(figsize=(20, 10))
         self.ax_env = self.fig.add_subplot(121)
@@ -76,10 +55,32 @@ class PEDyna(object):
         Return:
             obs: array([x_p0,y_p0,...,vx_p0,vy_p0,...,x_e0,y_e0,...,vx_e0,vy_e0])
         """
+        # Reset counter
+        self.num_evaders = random.randint(1,5)
+        self.num_pursuers = random.randint(1,5)
+        self.num_ellipses = random.randint(1,7)
+        self.num_polygons = random.randint(1,7)
+        self.spawning_pool = random.uniform(-self.world_length, self.world_length, size=(self.num_evaders+self.num_pursuers,2))
         self.step_counter = 0
-
+        # Reset obstacles: you can add more shapes in the section below
+        self.obstacles = []
+        for i in range(self.num_ellipses):
+            ellipse = Ellipse(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), width=random.uniform(self.world_length/10, self.world_length/7), height=random.uniform(self.world_length/10, self.world_length/7), angle=random.uniform(0,360), ec='k', fc='grey')
+            self.obstacles.append(ellipse)
+        for i in range(self.num_polygons):
+            reg_polygon = RegularPolygon(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), numVertices=random.randint(4,7), radius=random.uniform(self.world_length/10, self.world_length/7), orientation=random.uniform(-pi,pi), ec='k', fc='grey')
+            self.obstacles.append(reg_polygon)
+        # generate obstacle map
+        obst_pix = np.array([False]*self.pix_coords.shape[0])
+        for op in self.obstacles:
+            obst_pix = np.logical_or(obst_pix, op.contains_points(self.pix_coords, radius=self.world_length/np.min(resolution)/2))
+        self.obst_map = obst_pix.reshape(resolution)
         # create obs
         obs = self._get_observation()
+        # Reset Evaders
+        for ie in range(self.num_evaders):
+            self.evaders['position'][ie] = self.spawning_pool[ie]
+            while
 
         return obs
 
@@ -91,7 +92,7 @@ class PEDyna(object):
         self.ax_img = self.fig.get_axes()[1]
         self.ax_env.cla()
         # plot world boundary
-        bound = plt.Rectangle((-self.world_length/2,-self.world_length/2), self.world_length, self.world_length, linewidth=2, color='k', fill=False)
+        bound = plt.Rectangle((-self.world_length/2,-self.world_length/2), self.world_length, self.world_length, linewidth=3, color='k', fill=False)
         self.ax_env.add_patch(bound)
         # draw obstacles
         obst_collection = PatchCollection(self.obstacles, match_original=True) # match_origin prevent PatchCollection mess up original color
