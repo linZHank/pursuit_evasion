@@ -7,10 +7,11 @@ import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
-    env=PEDyna()
-    env.render()
-    # for ep in range(10):
-    #     env.reset()
+    env=PEDyna(num_evaders=4, num_pursuers=4)
+    # env.render()
+    for ep in range(10):
+        env.reset()
+        env.render()
         # print(bool(sum(sum(env.distance_matrix>env.interfere_radius))))
                 # print("\npursuers status: {} \nevaders status: {}".format(env.pursuers['status'],env.evaders['status']))
         # env.render(pause=1./env.rate)
