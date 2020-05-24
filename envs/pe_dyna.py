@@ -25,6 +25,7 @@ class PEDyna(object):
         # Env specs #
         self.name='dyna_mpme' # dynamic multi-pursuer multi-evader
         self.rate = 20 # Hz
+        self.max_episode_steps = 1000
         self.world_length = 10
         self.resolution = resolution
         self.num_evaders = num_evaders # random.randint(1,5)
@@ -157,8 +158,13 @@ class PEDyna(object):
             done: bool
             info: ''
         """
-        # Limit input
+        # Check input
         assert actions.shape == (self.num_evaders+self.num_pursuers, 2)
+        # Default reward, done, info
+        reward = np.zeros(self.num_evaders + self.num_pursuers)
+        done = np.array([False]*(self.num_evaders + self.num_pursuers))
+        info = ''
+        # Limit input
         actions = np.clip(actions, self.action_space_low, self.action_space_high)
         # Step evaders
         for ie in range(self.num_evaders):
@@ -179,7 +185,6 @@ class PEDyna(object):
             else:
                 actions[ie] = np.zeros(2)
                 self.evaders['velocity'][ie] = np.zeros(2)
-        # print("\nevader status: {} \nevaders position: {}".format(self.evaders['status'], self.evaders['position'])) #debug
         ## record evaders trajectory
         self.evaders['trajectory'].append(self.evaders['position'].copy())
         ## create evader patches, 八面玲珑
@@ -188,7 +193,7 @@ class PEDyna(object):
             if self.evaders['status'][ie] == 'active':
                 octagon = RegularPolygon(xy=self.evaders['position'][ie], numVertices=8, radius=self.evader_radius, fc='orangered')
                 self.evader_patches.append(octagon)
-        ## generate evaders map
+        ## create evader map
         self.evader_map = self._get_map(patch_list=self.evader_patches, radius=self.evader_radius)
         # Step pursuers
         for ip in range(self.num_pursuers):
@@ -208,7 +213,12 @@ class PEDyna(object):
             else:
                 actions[-self.num_pursuers+ip] = np.zeros(2)
                 self.pursuers['velocity'][ip] = np.zeros(2)
-        ## record evaders trajectory
+            ## detect captures
+            if self.pursuers['status'][ip] == 'active': # status updated, check status again
+                for ie in range(self.num_evaders):
+                    if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
+                        self._disable_evader(id=ie)
+        ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故
         self.pursuer_patches = []
@@ -216,12 +226,24 @@ class PEDyna(object):
             if self.pursuers['status'][ip] == 'active':
                 circle = Circle(xy=self.pursuers['position'][ip], radius=self.pursuer_radius, fc='deepskyblue')
                 self.pursuer_patches.append(circle)
-        ## generate evaders map
+        ## create pursuer map
         self.pursuer_map = self._get_map(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
-        # Create map in the order of BGR (opencv default)
+        # Combine maps in the order of BGR (opencv default)
         self.map[:,:,0] = 0.5*np.transpose(self.pursuer_map) # B
         self.map[:,:,1] = 0.5*np.transpose(self.obstacle_map) # G
         self.map[:,:,2] = 0.5*np.transpose(self.evader_map) # R
+        # Output
+        self.step_counter += 1
+        ## done if deactivated
+        done = np.array([s=='deactivated' for s in self.evaders['status']] + [s=='deactivated' for s in self.pursuers['status']])
+        if self.step_counter == self.max_episode_steps:
+            done = np.array([True]*(self.num_evaders + self.num_pursuers))
+        ## reward
+        # for ie in range(self.num_evaders):
+
+        obs = self.map.copy()
+        reward
+
         # return obs, reward, done, info
 
     def render(self, pause=2):
