@@ -21,15 +21,15 @@ class PEDyna(object):
     """
     Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=4)
     """
-    def __init__(self, num_evaders, num_pursuers, resolution=(100, 100)):
+    def __init__(self, resolution=(100, 100)):
         # Env specs #
         self.name='dyna_mpme' # dynamic multi-pursuer multi-evader
         self.rate = 20 # Hz
         self.max_episode_steps = 1000
         self.world_length = 10
         self.resolution = resolution
-        self.num_evaders = num_evaders # random.randint(1,5)
-        self.num_pursuers = num_pursuers # random.randint(1,5)
+        self.num_evaders = random.randint(1,5)
+        self.num_pursuers = random.randint(1,5)
         self.num_ellipses = random.randint(1,7)
         self.num_polygons = random.randint(1,7)
         self.obstacle_patches = []
@@ -40,6 +40,8 @@ class PEDyna(object):
         self.action_space_high = 2.
         self.evader_max_speed = 2. # max speed on one dirction, real max should be sqrt(2)*max_speed**2
         self.pursuer_max_speed = 2. # max speed on one dirction, real max should be sqrt(2)*max_speed**2
+        self.evader_radius = 0.1
+        self.evader_mass = 0.4
         # next 7 lines compute grid coordinates
         step_x, step_y = self.world_length/resolution[0], self.world_length/resolution[1]
         x_coords = np.linspace((-self.world_length+step_x)/2, (self.world_length-step_x)/2, resolution[0])
@@ -48,25 +50,6 @@ class PEDyna(object):
         for i in range(len(x_coords)):
             for j in range(len(y_coords)):
                 self.pix_coords[i*len(x_coords)+j] = np.array([x_coords[i], y_coords[j]])
-        # Init evaders and pursuers
-        self.evader_radius = 0.1
-        self.evader_mass = 0.4
-        self.evaders = dict(
-            names = ['e-'+str(i) for i in range(num_evaders)],
-            position = np.inf*np.ones((num_evaders, 2)),
-            velocity = np.zeros((num_evaders, 2)),
-            trajectory = [],
-            status = ['deactivated']*num_evaders
-        )
-        self.pursuer_radius = 0.1
-        self.pursuer_mass = 0.4
-        self.pursuers = dict(
-            names = ['p-'+str(i) for i in range(num_pursuers)],
-            position = np.inf*np.ones((num_pursuers, 2)),
-            velocity = np.zeros((num_pursuers, 2)),
-            trajectory = [],
-            status = ['deactivated']*num_pursuers
-        )
         # Prepare renderer #
         self.map = np.zeros((self.resolution[0],self.resolution[1],3))
         self.fig = plt.figure(figsize=(10, 10))
@@ -79,14 +62,30 @@ class PEDyna(object):
         Return:
             obs: array([x_p0,y_p0,...,vx_p0,vy_p0,...,x_e0,y_e0,...,vx_e0,vy_e0])
         """
-        # Reset counter
-        # self.num_evaders = random.randint(1,5)
-        # self.num_pursuers = random.randint(1,5)
+        self.num_evaders = random.randint(1,5)
+        self.num_pursuers = random.randint(1,5)
         self.num_ellipses = random.randint(1,7)
         self.num_polygons = random.randint(1,7)
+        # Reset evader dict
+        self.evaders = dict(
+            names = ['e-'+str(i) for i in range(self.num_evaders)],
+            position = np.inf*np.ones((self.num_evaders, 2)),
+            velocity = np.zeros((self.num_evaders, 2)),
+            trajectory = [],
+            status = ['deactivated']*self.num_evaders
+        )
+        # Reset pursuer dict
+        self.pursuers = dict(
+            names = ['p-'+str(i) for i in range(self.num_pursuers)],
+            position = np.inf*np.ones((self.num_pursuers, 2)),
+            velocity = np.zeros((self.num_pursuers, 2)),
+            trajectory = [],
+            status = ['deactivated']*self.num_pursuers
+        )
+        # Generate spawning positions
         self.spawning_pool = random.uniform(-self.world_length/2, self.world_length/2, size=(self.num_evaders+self.num_pursuers,2))
         self.step_counter = 0
-        # Reset obstacles: you can add more shapes in the section below #
+        # Reset obstacles: you can add more shapes in the section below
         self.obstacle_patches = []
         for _ in range(self.num_ellipses):
             ellipse = Ellipse(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), width=random.uniform(self.world_length/10, self.world_length/7), height=random.uniform(self.world_length/10, self.world_length/7), angle=random.uniform(0,360), fc='grey')
@@ -109,12 +108,12 @@ class PEDyna(object):
         self.evaders['trajectory'].append(self.evaders['position'].copy())
         self.evaders['status'] = ['active']*self.num_evaders
         self.spawning_pool[:self.num_evaders] = self.evaders['position'].copy()
-        # create evader patches, 八面玲珑
+        ## create evader patches, 八面玲珑
         self.evader_patches = []
         for ie in range(self.num_evaders):
             octagon = RegularPolygon(xy=self.evaders['position'][ie], numVertices=8, radius=self.evader_radius, fc='orangered')
             self.evader_patches.append(octagon)
-        # generate evaders map
+        ## create evaders map
         self.evader_map = self._get_map(patch_list=self.evader_patches, radius=self.evader_radius)
         # Reset Pursuers #
         for ip in range(self.num_pursuers):
@@ -129,21 +128,20 @@ class PEDyna(object):
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         self.pursuers['status'] = ['active']*self.num_pursuers
-        self.spawning_pool[self.num_evaders:] = self.pursuers['position'].copy()
-        # create pursuer patches, 圆滑世故
+        self.spawning_pool[-self.num_pursuers:] = self.pursuers['position'].copy()
+        ## create pursuer patches, 圆滑世故
         self.pursuer_patches = []
         for ip in range(self.num_pursuers):
             circle = Circle(xy=self.pursuers['position'][ip], radius=self.pursuer_radius, fc='deepskyblue')
             self.pursuer_patches.append(circle)
-        # generate pursuers map
+        ## create pursuers map
         self.pursuer_map = self._get_map(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
         # Create map in the order of BGR (opencv default)
         self.map[:,:,0] = 0.5*np.transpose(self.pursuer_map)
         self.map[:,:,1] = 0.5*np.transpose(self.obstacle_map)
         self.map[:,:,2] = 0.5*np.transpose(self.evader_map)
-
         # Get obs
-        obs = self._get_observation()
+        obs = self.map.copy()
 
         return obs
 
@@ -161,6 +159,7 @@ class PEDyna(object):
         # Check input
         assert actions.shape == (self.num_evaders+self.num_pursuers, 2)
         # Default reward, done, info
+        bonus = np.zeros(self.num_evaders+self.num_pursuers) # add bonus when key event detected
         reward = np.zeros(self.num_evaders + self.num_pursuers)
         done = np.array([False]*(self.num_evaders + self.num_pursuers))
         info = ''
@@ -182,6 +181,7 @@ class PEDyna(object):
                     ]
                 ):
                     self._disable_evader(id=ie)
+                    bonus[ie] = -10.
             else:
                 actions[ie] = np.zeros(2)
                 self.evaders['velocity'][ie] = np.zeros(2)
@@ -210,14 +210,18 @@ class PEDyna(object):
                     ]
                 ):
                     self._disable_pursuer(id=ip)
+                    bonus[-self.num_pursuers+ip] = -10.
             else:
                 actions[-self.num_pursuers+ip] = np.zeros(2)
                 self.pursuers['velocity'][ip] = np.zeros(2)
             ## detect captures
             if self.pursuers['status'][ip] == 'active': # status updated, check status again
                 for ie in range(self.num_evaders):
-                    if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
-                        self._disable_evader(id=ie)
+                    if self.evaders['status'][ie] =='active':
+                        if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
+                            self._disable_evader(id=ie)
+                            bonus[ie] = -10.
+                            bonus[-self.num_pursuers+ip] = 100.
         ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故
@@ -234,17 +238,21 @@ class PEDyna(object):
         self.map[:,:,2] = 0.5*np.transpose(self.evader_map) # R
         # Output
         self.step_counter += 1
+        ## obs
+        obs = self.map.copy()
+        ## reward
+        reward += bonus.copy()
         ## done if deactivated
         done = np.array([s=='deactivated' for s in self.evaders['status']] + [s=='deactivated' for s in self.pursuers['status']])
         if self.step_counter == self.max_episode_steps:
             done = np.array([True]*(self.num_evaders + self.num_pursuers))
-        ## reward
-        # for ie in range(self.num_evaders):
+        ## info
+        if all(done[:self.num_evaders]): # pursuers win
+            info = "All pursuers deceased"
+        if all(done[-self.num_evaders:]): # pursuers win
+            info = "All evaders deceased"
 
-        obs = self.map.copy()
-        reward
-
-        # return obs, reward, done, info
+        return obs, reward, done, info
 
     def render(self, pause=2):
         self.ax = self.fig.get_axes()[0]
@@ -255,27 +263,33 @@ class PEDyna(object):
         # Draw objects: obstacles, evaders, pursuers #
         patches_collection = PatchCollection(self.obstacle_patches+self.evader_patches+self.pursuer_patches, match_original=True) # match_origin prevent PatchCollection mess up original color
         self.ax.add_collection(patches_collection)
-        ## annotate evaders
+        ## depict evaders
+        evader_trajectories = np.array(self.evaders['trajectory'])
         for ie in range(self.num_evaders):
             if self.evaders['status'][ie]=='active':
-                # plt.annotate(
+                ### text annotation
                 self.ax.annotate(
                     self.evaders['names'][ie], # pursuer name
                     (self.evaders['position'][ie,0], self.evaders['position'][ie,1]), # name label location
                     textcoords="offset points", # how to position the text
                     xytext=(0,10), # distance from text to points (x,y)
                     ha='center')
-        ## annotate pursuers
+                ### draw evader trajectories
+                self.ax.plot(evader_trajectories[:,ie,0], evader_trajectories[:,ie,1], linestyle='--', linewidth=0.5, color='orangered')
+        ## depict pursuers
+        pursuer_trajectories = np.array(self.pursuers['trajectory'])
         for ip in range(self.num_pursuers):
             if self.pursuers['status'][ip]=='active':
-                # plt.annotate(
+                # text annotation
                 self.ax.annotate(
                     self.pursuers['names'][ip], # pursuer name
                     (self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), # name label location
                     textcoords="offset points", # how to position the text
                     xytext=(0,10), # distance from text to points (x,y)
                     ha='center')
-                # draw interfere circle
+                ### draw pursuer trajectories
+                self.ax.plot(pursuer_trajectories[:,ip,0], pursuer_trajectories[:,ip,1], linestyle='--', linewidth=0.5, color='deepskyblue')
+                ### draw interfere circle
                 interfere_circle = plt.Circle((self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), self.interfere_radius, color='deepskyblue', linestyle='dashed', fill=False)
                 self.ax.add_patch(interfere_circle)
         # Set axis
@@ -335,19 +349,6 @@ class PEDyna(object):
         map = patch_pix.reshape(self.resolution)
 
         return map
-
-    def _get_observation(self):
-        observation = np.concatenate(
-            (
-                self.evaders['position'].reshape(-1),
-                self.evaders['velocity'].reshape(-1),
-                self.pursuers['position'].reshape(-1),
-                self.pursuers['velocity'].reshape(-1)
-            ), axis=0
-        )
-
-        return observation
-        # raise NotImplementedError
 
     def _disable_pursuer(self, id):
         self.pursuers['position'][id] = np.inf*np.ones(2)
