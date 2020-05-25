@@ -8,9 +8,9 @@ import cv2
 
 
 if __name__ == '__main__':
-    env=PEDyna(num_evaders=4, num_pursuers=4)
+    env=PEDyna(resolution=(128,128))
     # env.render()
-    for ep in range(4):
+    for ep in range(10):
         obs = env.reset()
         # env.render(pause=1)
         # print(bool(sum(sum(env.distance_matrix>env.interfere_radius))))

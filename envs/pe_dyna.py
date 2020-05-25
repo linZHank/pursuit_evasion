@@ -42,6 +42,8 @@ class PEDyna(object):
         self.pursuer_max_speed = 2. # max speed on one dirction, real max should be sqrt(2)*max_speed**2
         self.evader_radius = 0.1
         self.evader_mass = 0.4
+        self.pursuer_radius = 0.1
+        self.pursuer_mass = 0.4
         # next 7 lines compute grid coordinates
         step_x, step_y = self.world_length/resolution[0], self.world_length/resolution[1]
         x_coords = np.linspace((-self.world_length+step_x)/2, (self.world_length-step_x)/2, resolution[0])
@@ -249,7 +251,7 @@ class PEDyna(object):
         ## info
         if all(done[:self.num_evaders]): # pursuers win
             info = "All pursuers deceased"
-        if all(done[-self.num_evaders:]): # pursuers win
+        if all(done[-self.num_pursuers:]): # pursuers win
             info = "All evaders deceased"
 
         return obs, reward, done, info
