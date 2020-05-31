@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from pe_dyna import PEDyna
+from pe_dyna_continuous import PEDynaEnv
 import numpy as np
 from numpy import random
 from numpy import pi
@@ -8,7 +8,7 @@ import cv2
 
 
 if __name__ == '__main__':
-    env=PEDyna(resolution=(128,128))
+    env=PEDynaEnv(resolution=(128,128))
     # env.render()
     for ep in range(10):
         obs = env.reset()

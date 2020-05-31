@@ -6,6 +6,7 @@ Pursuit-evasion environment:
     - Multiple Pursuers (>=1)
     - Multiple Evaders (>=1)
     - Homogeneous agents
+    - Continuous action space
 """
 import numpy as np
 from numpy import pi
@@ -17,7 +18,7 @@ from matplotlib.collections import PatchCollection
 # import matplotlib.image as mpimg
 # import cv2
 
-class PEDyna(object):
+class PEDynaEnv: #(object):
     """
     Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=4)
     """
