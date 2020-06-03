@@ -87,6 +87,7 @@ class PEDynaEnv:
         )
         # Generate spawning positions
         self.spawning_pool = random.uniform(-self.world_length/2, self.world_length/2, size=(self.num_evaders+self.num_pursuers,2))
+        self.actions = np.zeros((self.num_evaders+self.num_pursuers, 2))
         self.step_counter = 0
         # Reset obstacles: you can add more shapes in the section below
         self.obstacle_patches = []
@@ -170,8 +171,8 @@ class PEDynaEnv:
         # Step evaders
         for ie in range(self.num_evaders):
             if self.evaders['status'][ie] == 'active':
-                action = self.action_reservoir[action_indices[ie]]
-                d_vel = action/self.evader_mass/self.rate # don't go too fast
+                self.actions[ie] = self.action_reservoir[action_indices[ie]]
+                d_vel = self.actions[ie]/self.evader_mass/self.rate # don't go too fast
                 self.evaders['velocity'][ie] += d_vel
                 self.evaders['velocity'][ie] = np.clip(self.evaders['velocity'][ie], -self.evader_max_speed, self.evader_max_speed)
                 d_pos = self.evaders['velocity'][ie]/self.rate
@@ -179,14 +180,15 @@ class PEDynaEnv:
                 if any(
                     [
                         self._is_outbound(self.evaders['position'][ie], radius=self.evader_radius),
-                        self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius),
-                        self._is_interfered(self.evaders['position'][ie], radius=2*self.evader_radius)
+                        self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius)
                     ]
                 ):
                     self._disable_evader(id=ie)
-                    bonus[ie] = -10.
+                    bonus[ie] = -self.max_episode_steps/10.
+                else:
+                    bonus[ie] = -np.linalg.norm(self.actions[ie])/10
             else:
-                action = np.zeros(2)
+                self.actions[ie] = np.zeros(2)
                 self.evaders['velocity'][ie] = np.zeros(2)
         ## record evaders trajectory
         self.evaders['trajectory'].append(self.evaders['position'].copy())
@@ -201,8 +203,8 @@ class PEDynaEnv:
         # Step pursuers
         for ip in range(self.num_pursuers):
             if self.pursuers['status'][ip] == 'active':
-                action = self.action_reservoir[action_indices[-self.num_pursuers+ip]]
-                d_vel = action/self.pursuer_mass/self.rate # don't go too fast
+                self.actions[-self.num_pursuers+ip] = self.action_reservoir[action_indices[-self.num_pursuers+ip]]
+                d_vel = self.actions[-self.num_pursuers+ip]/self.pursuer_mass/self.rate # don't go too fast
                 self.pursuers['velocity'][ip] += d_vel
                 self.pursuers['velocity'][ip] = np.clip(self.pursuers['velocity'][ip], -self.pursuer_max_speed, self.pursuer_max_speed)
                 d_pos = self.pursuers['velocity'][ip]/self.rate
@@ -214,9 +216,11 @@ class PEDynaEnv:
                     ]
                 ):
                     self._disable_pursuer(id=ip)
-                    bonus[-self.num_pursuers+ip] = -10.
+                    bonus[-self.num_pursuers+ip] = -self.max_episode_steps/10.
+                else:
+                    bonus[-self.num_pursuers+ip] = -np.linalg.norm(self.actions[-self.num_pursuers+ip])/10.
             else:
-                action = np.zeros(2)
+                self.actions[-self.num_pursuers+ip] = np.zeros(2)
                 self.pursuers['velocity'][ip] = np.zeros(2)
             ## detect captures
             if self.pursuers['status'][ip] == 'active': # status updated, check status again
@@ -224,8 +228,8 @@ class PEDynaEnv:
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
                             self._disable_evader(id=ie)
-                            bonus[ie] = -10.
-                            bonus[-self.num_pursuers+ip] = 100.
+                            bonus[ie] = -self.max_episode_steps/10.
+                            bonus[-self.num_pursuers+ip] = self.max_episode_steps/10.
         ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故
