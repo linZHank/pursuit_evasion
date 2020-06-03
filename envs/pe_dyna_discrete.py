@@ -44,7 +44,7 @@ class PEDynaEnv:
         self.evader_mass = 0.4
         self.pursuer_radius = 0.1
         self.pursuer_mass = 0.4
-        self.num_actions = 5 # 1: None, 2: Up 3: Down, 3: Left, 4: Right
+        self.action_reservoir = np.array([[0,0], [0,1], [0,-1], [-1,0], [1,0]])  # 1: None, 2: Up 3: Down, 3: Left, 4: Right
         # next 7 lines compute grid coordinates
         step_x, step_y = self.world_length/resolution[0], self.world_length/resolution[1]
         x_coords = np.linspace((-self.world_length+step_x)/2, (self.world_length-step_x)/2, resolution[0])
@@ -148,7 +148,7 @@ class PEDynaEnv:
 
         return obs
 
-    def step(self, actions):
+    def step(self, action_indices):
         """
         Agents take velocity command
         Args:
@@ -160,18 +160,18 @@ class PEDynaEnv:
             info: ''
         """
         # Check input
-        assert actions.shape == (self.num_evaders+self.num_pursuers,)
+        assert action_indices.shape == (self.num_evaders+self.num_pursuers,)
+        assert all(action_indices>=0) and all(action_indices<self.action_reservoir.shape[0])
         # Default reward, done, info
         bonus = np.zeros(self.num_evaders+self.num_pursuers) # add bonus when key event detected
         reward = np.zeros(self.num_evaders + self.num_pursuers)
         done = np.array([False]*(self.num_evaders + self.num_pursuers))
         info = ''
-        # Limit input
-        actions = np.clip(actions, self.action_space_low, self.action_space_high)
         # Step evaders
         for ie in range(self.num_evaders):
             if self.evaders['status'][ie] == 'active':
-                d_vel = actions[ie]/self.evader_mass/self.rate # don't go too fast
+                action = self.action_reservoir[action_indices[ie]]
+                d_vel = action/self.evader_mass/self.rate # don't go too fast
                 self.evaders['velocity'][ie] += d_vel
                 self.evaders['velocity'][ie] = np.clip(self.evaders['velocity'][ie], -self.evader_max_speed, self.evader_max_speed)
                 d_pos = self.evaders['velocity'][ie]/self.rate
@@ -186,7 +186,7 @@ class PEDynaEnv:
                     self._disable_evader(id=ie)
                     bonus[ie] = -10.
             else:
-                actions[ie] = np.zeros(2)
+                action = np.zeros(2)
                 self.evaders['velocity'][ie] = np.zeros(2)
         ## record evaders trajectory
         self.evaders['trajectory'].append(self.evaders['position'].copy())
@@ -201,7 +201,8 @@ class PEDynaEnv:
         # Step pursuers
         for ip in range(self.num_pursuers):
             if self.pursuers['status'][ip] == 'active':
-                d_vel = actions[-self.num_pursuers+ip]/self.pursuer_mass/self.rate # don't go too fast
+                action = self.action_reservoir[action_indices[-self.num_pursuers+ip]]
+                d_vel = action/self.pursuer_mass/self.rate # don't go too fast
                 self.pursuers['velocity'][ip] += d_vel
                 self.pursuers['velocity'][ip] = np.clip(self.pursuers['velocity'][ip], -self.pursuer_max_speed, self.pursuer_max_speed)
                 d_pos = self.pursuers['velocity'][ip]/self.rate
@@ -215,7 +216,7 @@ class PEDynaEnv:
                     self._disable_pursuer(id=ip)
                     bonus[-self.num_pursuers+ip] = -10.
             else:
-                actions[-self.num_pursuers+ip] = np.zeros(2)
+                action = np.zeros(2)
                 self.pursuers['velocity'][ip] = np.zeros(2)
             ## detect captures
             if self.pursuers['status'][ip] == 'active': # status updated, check status again
