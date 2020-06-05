@@ -17,7 +17,7 @@ from matplotlib.collections import PatchCollection
 # import matplotlib.image as mpimg
 # import cv2
 
-class PEEnv:
+class PursuitEvasion:
     """
     Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=4)
     """

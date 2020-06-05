@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from pe_env import PursuitEvasion
+from pe_discrete_env import PursuitEvasionDiscrete
 import numpy as np
 from numpy import random
 from numpy import pi
@@ -8,7 +8,7 @@ import cv2
 
 
 if __name__ == '__main__':
-    env=PursuitEvasion()
+    env=PursuitEvasionDiscrete()
     # env.render()
     for ep in range(10):
         obs = env.reset()
