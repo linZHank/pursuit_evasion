@@ -28,6 +28,7 @@ class PEEnv:
         self.max_episode_steps = 1000
         self.resolution = resolution
         self.world_length = 10
+        self.damping = 0.1
         self.max_num_evaders = 4
         self.max_num_pursuers = 4
         self.num_evaders = random.randint(1,self.max_num_evaders+1)
@@ -142,10 +143,10 @@ class PEEnv:
             self.pursuer_patches.append(circle)
         ## create pursuers map
         self.pursuer_map = self._get_map(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
-        # Create map in the order of BGR (opencv default)
-        self.map[:,:,0] = 0.5*np.transpose(self.pursuer_map)
+        # Create map in the order of RGB 
+        self.map[:,:,0] = 0.5*np.transpose(self.evader_map)
         self.map[:,:,1] = 0.5*np.transpose(self.obstacle_map)
-        self.map[:,:,2] = 0.5*np.transpose(self.evader_map)
+        self.map[:,:,2] = 0.5*np.transpose(self.pursuer_map)
         # Get obs
         obs = self.map.copy()
 
@@ -174,7 +175,7 @@ class PEEnv:
         # Step evaders
         for ie in range(self.num_evaders):
             if self.evaders['status'][ie] == 'active':
-                d_vel = actions[ie]/self.evader_mass/self.rate # don't go too fast
+                d_vel = (actions[ie]/self.evader_mass - self.damping*self.evaders['velocity'][ie])/self.rate
                 self.evaders['velocity'][ie] += d_vel
                 self.evaders['velocity'][ie] = np.clip(self.evaders['velocity'][ie], -self.evader_max_speed, self.evader_max_speed)
                 d_pos = self.evaders['velocity'][ie]/self.rate
@@ -183,11 +184,12 @@ class PEEnv:
                     [
                         self._is_outbound(self.evaders['position'][ie], radius=self.evader_radius),
                         self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius),
-                        self._is_interfered(self.evaders['position'][ie], radius=2*self.evader_radius)
                     ]
                 ):
                     self._disable_evader(id=ie)
-                    bonus[ie] = -10.
+                    bonus[ie] = -self.max_episode_steps/10.
+                else:
+                    bonus[ie] = -np.linalg.norm(actions[ie])/10.
             else:
                 actions[ie] = np.zeros(2)
                 self.evaders['velocity'][ie] = np.zeros(2)
@@ -201,10 +203,11 @@ class PEEnv:
                 self.evader_patches.append(octagon)
         ## create evader map
         self.evader_map = self._get_map(patch_list=self.evader_patches, radius=self.evader_radius)
+
         # Step pursuers
         for ip in range(self.num_pursuers):
             if self.pursuers['status'][ip] == 'active':
-                d_vel = actions[-self.num_pursuers+ip]/self.pursuer_mass/self.rate # don't go too fast
+                d_vel = (actions[-self.num_pursuers+ip]/self.pursuer_mass  - self.damping*self.pursuers['velocity'][ip])/self.rate
                 self.pursuers['velocity'][ip] += d_vel
                 self.pursuers['velocity'][ip] = np.clip(self.pursuers['velocity'][ip], -self.pursuer_max_speed, self.pursuer_max_speed)
                 d_pos = self.pursuers['velocity'][ip]/self.rate
@@ -216,7 +219,9 @@ class PEEnv:
                     ]
                 ):
                     self._disable_pursuer(id=ip)
-                    bonus[-self.num_pursuers+ip] = -10.
+                    bonus[-self.num_pursuers+ip] = -self.max_episode_steps/10.
+                else:
+                    bonus[-self.num_pursuers+ip] = -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
             else:
                 actions[-self.num_pursuers+ip] = np.zeros(2)
                 self.pursuers['velocity'][ip] = np.zeros(2)
@@ -238,10 +243,10 @@ class PEEnv:
                 self.pursuer_patches.append(circle)
         ## create pursuer map
         self.pursuer_map = self._get_map(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
-        # Combine maps in the order of BGR (opencv default)
-        self.map[:,:,0] = 0.5*np.transpose(self.pursuer_map) # B
+        # Combine maps in the order of RGB 
+        self.map[:,:,0] = 0.5*np.transpose(self.evader_map) # R
         self.map[:,:,1] = 0.5*np.transpose(self.obstacle_map) # G
-        self.map[:,:,2] = 0.5*np.transpose(self.evader_map) # R
+        self.map[:,:,2] = 0.5*np.transpose(self.pursuer_map) # B
         # Output
         self.step_counter += 1
         ## obs
@@ -254,9 +259,9 @@ class PEEnv:
             done = np.array([True]*(self.num_evaders + self.num_pursuers))
         ## info
         if all(done[:self.num_evaders]): # pursuers win
-            info = "All pursuers deceased"
-        if all(done[-self.num_pursuers:]): # pursuers win
             info = "All evaders deceased"
+        if all(done[-self.num_pursuers:]): # evaders win
+            info = "All pursuers deceased"
 
         return obs, reward, done, info
 

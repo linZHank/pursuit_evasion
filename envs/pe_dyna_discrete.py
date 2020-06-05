@@ -200,6 +200,7 @@ class PEDynaEnv:
                 self.evader_patches.append(octagon)
         ## create evader map
         self.evader_map = self._get_map(patch_list=self.evader_patches, radius=self.evader_radius)
+
         # Step pursuers
         for ip in range(self.num_pursuers):
             if self.pursuers['status'][ip] == 'active':
