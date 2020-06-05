@@ -67,7 +67,7 @@ class PursuitEvasion:
         Reset obstacles and agents location
         Args:
         Return:
-            obs: array([x_p0,y_p0,...,vx_p0,vy_p0,...,x_e0,y_e0,...,vx_e0,vy_e0])
+            obs: map image
         """
         self.num_evaders = random.randint(1,self.max_num_evaders+1)
         self.num_pursuers = random.randint(1,self.max_num_pursuers+1)
@@ -158,7 +158,7 @@ class PursuitEvasion:
         Args:
             actions: array([[fx_e0,fy_e0],[fx_e1,fy_e1],...,[fx_pN,fy_pN]])
         Returns:
-            obs: array([x_e0,y_e0,...,vx_e0,vy_e0,...,vx_pN,vy_pN])
+            obs: map image
             reward:
             done: bool
             info: ''
@@ -231,8 +231,8 @@ class PursuitEvasion:
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
                             self._disable_evader(id=ie)
-                            bonus[ie] = -10.
-                            bonus[-self.num_pursuers+ip] = 100.
+                            bonus[ie] = -self.max_episode_steps/10.
+                            bonus[-self.num_pursuers+ip] = self.max_episode_steps/10.
         ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故

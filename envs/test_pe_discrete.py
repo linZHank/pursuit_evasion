@@ -14,8 +14,8 @@ if __name__ == '__main__':
         obs = env.reset()
         for st in range(env.max_episode_steps):
             env.render(pause=1./env.rate)
-            actions = np.random.uniform(-4,4,size=(env.num_evaders+env.num_pursuers,2))
-            obs, rew, done, info = env.step(actions)
+            ia= np.random.randint(env.action_reservoir.shape[0], size=env.num_evaders+env.num_pursuers)
+            obs, rew, done, info = env.step(ia)
             # img = obs[:,:,[2,1,0]]
             # cv2.imshow('map', cv2.resize(img, (360, 360)))
             # if cv2.waitKey(25) & 0xFF == ord('q'):
