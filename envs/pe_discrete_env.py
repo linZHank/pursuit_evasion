@@ -24,6 +24,7 @@ class PursuitEvasionDiscrete(PursuitEvasion):
     """
     def __init__(self, resolution=(100, 100)):
         super().__init__(resolution)
+        self.name = 'mpme_discrete'
         self.action_reservoir = np.array([[0,0], [0,1], [0,-1], [-1,0], [1,0]])  # 0: None, 1: Up, 2: Down, 3: Left, 4: Right
 
     def step(self, action_indices):
