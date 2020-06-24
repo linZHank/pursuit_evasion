@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-from pe_discrete_env import PursuitEvasionDiscrete
+from pe_env_discrete import PursuitEvasionDiscrete
 import numpy as np
 from numpy import random
 from numpy import pi
