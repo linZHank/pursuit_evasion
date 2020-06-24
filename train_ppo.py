@@ -1,4 +1,4 @@
-import sys
+ihttps://youtu.be/CwiY4i8xWIcmport sys
 import os
 import numpy as np
 import cv2
@@ -90,12 +90,12 @@ ep_len = np.zeros(num_evaders+num_pursuers)
 for ep in range(epochs):
     episode = 0
     while episode < episodes_per_epoch:
+        odoms = compute_odometry(env)
         imgs = np.stack([np.zeros_like(obs) for _ in range(num_evaders+num_pursuers)], axis=0) # prepare storing images
         for ie in range(num_evaders):
            imgs[ie] = obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) # add noise N(0,0.01)
         for ip in range(num_pursuers):
            imgs[-num_pursuers+ip] = obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) 
-        odoms = compute_odometry(env)
         acts = np.zeros((num_evaders+num_pursuers,2))
         vals = np.zeros(num_evaders+num_pursuers)
         logps = np.zeros(num_evaders+num_pursuers)
@@ -110,12 +110,6 @@ for ep in range(epochs):
                 agent_pur.step(imgs[-num_pursuers+ip], odoms[-num_pursuers+ip])
         # step env and obtain new obs
         next_obs, rew, done, info = env.step(acts)
-        # next_imgs = np.stack([np.zeros_like(next_obs) for _ in range(num_evaders+num_pursuers)], axis=0) 
-        # for ie in range(num_evaders):
-        #     next_imgs[ie] = next_obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) # add noise N(0,0.01)
-        # for ip in range(num_pursuers):
-        #     next_imgs[-num_pursuers+ip] = next_obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) 
-        # next_odoms = compute_odometry(env)
         total_steps += 1
         # store experiences
         for ie in range(num_evaders):
@@ -125,7 +119,20 @@ for ep in range(epochs):
             if not done[-num_pursuers+ip] or rew[-num_pursuers+ip]:
                 agent_pur.buffer.store(imgs[-num_pursuers+ip], odoms[-num_pursuers+ip], rews[-num_pursuers+ip], vals[-num_pursuers+ip], logps[-num_pursuers+ip]) 
         obs = next_obs # THIS IS CRITICAL!!!
+        timeout = (env.step_counter==env.max_episode_steps)
 
+        if all(done[:num_evaders]) or all(done[-num_pursuers:]):
+            episode += 1
+            if all(done): # timeout
+                last_vals = np.zeros(num_evaders)
+                odoms = compute_odometry(env)
+                imgs = np.stack([np.zeros_like(obs) for _ in range(num_evaders+num_pursuers)], axis=0) # prepare storing images
+                for ie in range(num_evaders):
+                    imgs[ie] = obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) # add noise N(0,0.01)
+                    _, last_val[ie], _ = agent_eva.step(imgs[ie], odoms[ie])
+                for ip in range(num_pursuers):
+                    imgs[-num_pursuers+ip] = obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) 
+                
         
                 
 
