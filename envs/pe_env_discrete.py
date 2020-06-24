@@ -135,8 +135,8 @@ class PursuitEvasionDiscrete(PursuitEvasion):
         ## done if deactivated
         done = np.array([s=='deactivated' for s in self.evaders['status']] + [s=='deactivated' for s in self.pursuers['status']])
         if self.step_counter == self.max_episode_steps:
-            pass
             # done = np.array([True]*(self.num_evaders + self.num_pursuers))
+            pass
         ## info
         if all(done[:self.num_evaders]): # pursuers win
             info = "All evaders deceased"

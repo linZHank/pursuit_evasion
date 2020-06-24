@@ -21,7 +21,7 @@ class PursuitEvasion:
     """
     Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=4)
     """
-    def __init__(self, resolution=(100, 100)):
+    def __init__(self, resolution=(150, 150)):
         # Env specs #
         self.name='mpme' # dynamic multi-pursuer multi-evader
         self.rate = 20 # Hz
@@ -256,8 +256,8 @@ class PursuitEvasion:
         ## done if deactivated
         done = np.array([s=='deactivated' for s in self.evaders['status']] + [s=='deactivated' for s in self.pursuers['status']])
         if self.step_counter == self.max_episode_steps:
-            pass
             # done = np.array([True]*(self.num_evaders + self.num_pursuers))
+            pass
         ## info
         if all(done[:self.num_evaders]): # pursuers win
             info = "All evaders deceased"
