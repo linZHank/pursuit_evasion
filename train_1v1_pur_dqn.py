@@ -26,7 +26,7 @@ if __name__=='__main__':
     sedimentary_returns = []
     ep_rew = 0
     # instantiate agent
-    agent_p = DQNAgent(buffer_size=int(1e4), warmup_episodes=5, batch_size=256, decay_period=5)
+    agent_p = DQNAgent(buffer_size=int(1e4), warmup_episodes=5, batch_size=32, decay_period=5)
     start_time = time.time()
     for ep in range(num_episodes):
         obs, ep_rew = env.reset(), 0
