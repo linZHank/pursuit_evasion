@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, RegularPolygon, Circle
 from matplotlib.collections import PatchCollection
 import cv2
-from pe_env import PursuitEvasion
+from .pe_env import PursuitEvasion
 
 
 class PursuitEvasionOneVsOneDiscrete(PursuitEvasion):
@@ -228,7 +228,7 @@ class PursuitEvasionOneVsOneDiscrete(PursuitEvasion):
         done = np.array([s=='deactivated' for s in self.evaders['status']] + [s=='deactivated' for s in self.pursuers['status']])
         if self.step_counter == self.max_episode_steps:
             # done = np.array([True]*(self.num_evaders + self.num_pursuers))
-            pass
+            info = "timeup"
         ## info
         if all(done[:self.num_evaders]): # pursuers win
             info = "All evaders deceased"

@@ -1,4 +1,3 @@
-ihttps://youtu.be/CwiY4i8xWIcmport sys
 import os
 import numpy as np
 import cv2

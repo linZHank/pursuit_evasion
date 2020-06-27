@@ -4,7 +4,6 @@ A DQN type agent class for pe_env_discrete
 import tensorflow as tf
 import numpy as np
 import logging
-logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
 
 ################################################################
 """
@@ -22,15 +21,13 @@ if gpus:
         print(e)
     # Restrict TensorFlow to only use the first GPU
     try:
-        tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+        tf.config.experimental.set_visible_devices(gpus[1], 'GPU')
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
     except RuntimeError as e:
         # Visible devices must be set before GPUs have been initialized
         print(e)
 ################################################################
-
-
 class ReplayBuffer:
     """
     An off-policy replay buffer for DQN agent
@@ -45,14 +42,14 @@ class ReplayBuffer:
         self.done_buf = np.zeros(shape=buf_size, dtype=np.bool)
         self.ptr, self.size, self.max_size = 0, 0, buf_size
 
-    def store(self, img, odom, act, rew, done, nxt_img, next_odom):
+    def store(self, img, odom, act, rew, done, nxt_img, nxt_odom):
         self.img_buf[self.ptr] = img
         self.odom_buf[self.ptr] = odom
         self.act_buf[self.ptr] = act
         self.rew_buf[self.ptr] = rew
         self.done_buf[self.ptr] = done
         self.nxt_img_buf[self.ptr] = nxt_img
-        self.nxt_odom_buf[self.ptr] = next_odom
+        self.nxt_odom_buf[self.ptr] = nxt_odom
         self.ptr = (self.ptr + 1)%self.max_size
         self.size = min(self.size+1, self.max_size)
 
@@ -61,7 +58,7 @@ class ReplayBuffer:
         batch = dict(
             img = tf.convert_to_tensor(self.img_buf[ids], dtype=tf.float32),
             odom = tf.convert_to_tensor(self.odom_buf[ids], dtype=tf.float32),
-            act = tf.convert_to_tensor(self.act_buf[ids], dtype=tf.int8),
+            act = tf.convert_to_tensor(self.act_buf[ids], dtype=tf.int32),
             rew = tf.convert_to_tensor(self.rew_buf[ids], dtype=tf.float32),
             done = tf.convert_to_tensor(self.done_buf[ids], dtype=tf.float32),
             nxt_img = tf.convert_to_tensor(self.nxt_img_buf[ids], dtype=tf.float32),
@@ -94,9 +91,9 @@ class DQNAgent:
     """
     DQN agent class. epsilon decay, epsilon greedy, train, etc..
     """
-    def __init__(self, name='dqn_agent', dim_img=(150,150,3), dim_odom=4, dim_act=5, buffer_size=int(1e7), decay_period=1000,
-                 warmup_episodes=100, learning_rate=3e-4, optimizer=tf.keras.optimizers.Adam(learning_rate=3e-4),
-                 loss_fn=tf.keras.losses.MeanSquaredError(), batch_size=32, discount_rate=0.99, sync_step=4096):
+    def __init__(self, name='dqn_agent', dim_img=(150,150,3), dim_odom=4, dim_act=5, buffer_size=int(1e4), decay_period=1000,
+                 warmup_episodes=100, init_epsilon=1., final_epsilon=.1, learning_rate=1e-4,
+                 loss_fn=tf.keras.losses.MeanSquaredError(), batch_size=1024, discount_rate=0.99, sync_step=4096):
         # hyper parameters
         self.name = name
         self.dim_act = dim_act
@@ -105,7 +102,7 @@ class DQNAgent:
         self.init_epsilon = init_epsilon
         self.learning_rate = learning_rate
         self.final_epsilon = final_epsilon
-        self.optimizer = optimizer
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
         self.loss_fn = loss_fn
         self.batch_size = batch_size
         self.gamma = discount_rate
@@ -130,26 +127,26 @@ class DQNAgent:
 
         return action
             
-    def linear_epsilon_decay(self, crnt_ep):
+    def linear_epsilon_decay(self, curr_ep):
         """
         Begin at 1. until warmup_steps steps have been taken; then Linearly decay epsilon from 1. to final_eps in decay_period steps; and then Use epsilon from there on.
         Args:
-            decay_period: int
-            episode: int
+            curr_ep: current episode index
         Returns:
             current epsilon for the agent's epsilon-greedy policy
         """
-        episodes_left = self.decay_period + self.warmup_episodes - crnt_ep
+        episodes_left = self.decay_period + self.warmup_episodes - curr_ep
         bonus = (self.init_epsilon - self.final_epsilon) * episodes_left / self.decay_period
         bonus = np.clip(bonus, 0., self.init_epsilon-self.final_epsilon)
         self.epsilon = self.final_epsilon + bonus
 
-    @tf.function
+    # @tf.function
     def train_one_step(self):
         minibatch = self.replay_buffer.sample_batch(batch_size=self.batch_size)
         with tf.GradientTape() as tape:
             # compute current Q
             vals = self.dqn_active([minibatch['img'], minibatch['odom']])
+            print("vals: {}".format(vals))
             oh_acts = tf.one_hot(minibatch['act'], depth=self.dim_act)
             pred_qvals = tf.math.reduce_sum(tf.math.multiply(vals, oh_acts), axis=-1)
             # compute target Q
@@ -176,3 +173,4 @@ if __name__=='__main__':
     test_odom = np.random.randn(4,4)
     qvals = agent.dqn_active([test_img, test_odom])
     print("qvals: {}".format(qvals))
+
