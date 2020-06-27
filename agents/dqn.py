@@ -21,7 +21,7 @@ if gpus:
         print(e)
     # Restrict TensorFlow to only use the first GPU
     try:
-        tf.config.experimental.set_visible_devices(gpus[1], 'GPU')
+        tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
     except RuntimeError as e:
@@ -53,7 +53,7 @@ class ReplayBuffer:
         self.ptr = (self.ptr + 1)%self.max_size
         self.size = min(self.size+1, self.max_size)
 
-    def sample_batch(self, batch_size=32):
+    def sample_batch(self, batch_size):
         ids = np.random.randint(0, self.size, size=batch_size)
         batch = dict(
             img = tf.convert_to_tensor(self.img_buf[ids], dtype=tf.float32),
@@ -91,8 +91,8 @@ class DQNAgent:
     """
     DQN agent class. epsilon decay, epsilon greedy, train, etc..
     """
-    def __init__(self, name='dqn_agent', dim_img=(150,150,3), dim_odom=4, dim_act=5, buffer_size=int(1e4), decay_period=1000,
-                 warmup_episodes=100, init_epsilon=1., final_epsilon=.1, learning_rate=1e-4,
+    def __init__(self, name='dqn_agent', dim_img=(150,150,3), dim_odom=4, dim_act=5, buffer_size=int(1e7), decay_period=1000,
+                 warmup_episodes=100, init_epsilon=1., final_epsilon=.1, learning_rate=3e-4,
                  loss_fn=tf.keras.losses.MeanSquaredError(), batch_size=1024, discount_rate=0.99, sync_step=4096):
         # hyper parameters
         self.name = name
@@ -146,7 +146,6 @@ class DQNAgent:
         with tf.GradientTape() as tape:
             # compute current Q
             vals = self.dqn_active([minibatch['img'], minibatch['odom']])
-            print("vals: {}".format(vals))
             oh_acts = tf.one_hot(minibatch['act'], depth=self.dim_act)
             pred_qvals = tf.math.reduce_sum(tf.math.multiply(vals, oh_acts), axis=-1)
             # compute target Q
