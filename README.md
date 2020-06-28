@@ -1,28 +1,29 @@
-# pursuit_evasion
+# pursuit\_evasion
 
 ## Pre-requisites
-**Python3** Python2 should be OK, just casually tested  
+**Python3** > Python 2 probably OK
 **Numpy**  
 **Matplotlib**
+**python3-opencv**
 
 ## Quick Start
+```console
+cd /your/play/ground/
+git clone https://github.com/linZHank/pursuit_evasion.git
+cd pursuit_evasion
+```
 
-## Test Script
-`python3 envs/test_pe_dyna.py`
+### Test pursuit-evasion environment with random actions
+```console
+python3 envs/pe.py
+```
 
-## Function Tests
-> Videos
-### Reset   
-[![pe_reset](/figs/reset_function.jpg)](https://www.youtube.com/embed/teVu3SRnujs)
+### Train a DQN pursuer in 1v1 env (under construction...)
+```console
+python3 train_1v1_pur_dqn.py
+```
 
-### Step
-[![pe_step](/figs/step_function.jpg)](https://www.youtube.com/embed/UohNn-MbRnc)
+### Notes
+scroll down to the bottom of each env to see an example usage
 
-### DQN Training
-[![dqn_train](/figs/training.jpg)](https://www.youtube.com/embed/9IS8wZSyKbo)
 
-### 2 Pursuers 1 Evader Demonstration
-[![deploy_2p1e](/figs/deploy_2p1e.jpg)](https://youtu.be/eLJ-kUjVJ0M)
-
-### Pointmass Dynamics Env Test
-[![dyna_env_test](/figs/dyna_env_test.jpg)](https://youtu.be/j7_hBi3cW2E)
