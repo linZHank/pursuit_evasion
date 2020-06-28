@@ -2,7 +2,7 @@
 """
 Pursuit-evasion environment:
     - Randomly placed obstacles
-    - Multiple Obstacles (>=0)
+    - Multiple Obstacles (<=14)
     - Multiple Pursuers (>=1)
     - Multiple Evaders (>=1)
     - Homogeneous agents
@@ -10,21 +10,23 @@ Note:
     - Discrete action space
 """
 import numpy as np
+import cv2
 from numpy import pi
 from numpy import random
 import time
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, RegularPolygon, Circle
 from matplotlib.collections import PatchCollection
-from pe_env import PursuitEvasion
+from pe import PursuitEvasion
+
 
 class PursuitEvasionDiscrete(PursuitEvasion):
     """
-    Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=4)
+    Dynamics Pursuit-evasion env: multiple pursuers, multiple evaders, discrete action space
     """
     def __init__(self, resolution=(100, 100)):
         super().__init__(resolution)
-        self.name = 'mpme_discrete'
+        self.name = 'npne_discrete'
         self.action_reservoir = np.array([[0,0], [0,1], [0,-1], [-1,0], [1,0]])  # 0: None, 1: Up, 2: Down, 3: Left, 4: Right
 
     def step(self, action_indices):
@@ -34,9 +36,9 @@ class PursuitEvasionDiscrete(PursuitEvasion):
             action_indices: array([a_e0, a_e1,...,a_pN])
         Returns:
             obs: map image
-            reward:
-            done: bool
-            info: ''
+            reward: array([r_e0,...,r_pN])
+            done: bool array([d_e0,...,d_pN])
+            info: episode result or ''
         """
         # Check input and convert index into actual force
         assert action_indices.shape == (self.num_evaders+self.num_pursuers,)
@@ -65,7 +67,6 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                         self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius),
                     ]
                 ):
-                    # self._disable_evader(id=ie)
                     self.evaders['status'][ie] = 'deactivated'
                     bonus[ie] = -self.max_episode_steps/10.
                 else:
@@ -98,7 +99,6 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                         self._is_occluded(self.pursuers['position'][ip], radius=self.pursuer_radius),
                     ]
                 ):
-                    # self._disable_pursuer(id=ip)
                     self.pursuers['status'][ip] = 'deactivated'
                     bonus[-self.num_pursuers+ip] = -self.max_episode_steps/10.
                 else:
@@ -111,7 +111,6 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                 for ie in range(self.num_evaders):
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
-                            # self._disable_evader(id=ie)
                             self.evaders['status'][ie] = 'deactivated'
                             bonus[ie] = -self.max_episode_steps/10.
                             bonus[-self.num_pursuers+ip] = self.max_episode_steps/10.
@@ -138,7 +137,6 @@ class PursuitEvasionDiscrete(PursuitEvasion):
         ## done if deactivated
         done = np.array([s=='deactivated' for s in self.evaders['status']] + [s=='deactivated' for s in self.pursuers['status']])
         if self.step_counter == self.max_episode_steps:
-            # done = np.array([True]*(self.num_evaders + self.num_pursuers))
             info = "timeup"
         ## info
         if all(done[:self.num_evaders]): # pursuers win
@@ -149,3 +147,22 @@ class PursuitEvasionDiscrete(PursuitEvasion):
         return obs, reward, done, info
 
 
+if __name__ == '__main__':
+    env=PursuitEvasionDiscrete()
+    # env.render()
+    for ep in range(10):
+        obs = env.reset()
+        for st in range(env.max_episode_steps):
+            env.render(pause=1./env.rate)
+            ia= np.random.randint(env.action_reservoir.shape[0], size=env.num_evaders+env.num_pursuers)
+            obs, rew, done, info = env.step(ia)
+            img = obs[:,:,[2,1,0]]
+            cv2.imshow('map', cv2.resize(img, (360, 360)))
+            if cv2.waitKey(25) & 0xFF == ord('q'):
+                break
+            print("\nreward: {} \ndone: {}".format(rew, done))
+
+            if info:
+                print(info)
+                break
+    cv2.destroyAllWindows()

@@ -2,64 +2,34 @@
 """
 Pursuit-evasion environment:
     - Randomly placed obstacles
-    - Multiple Obstacles (>=0)
-    - Multiple Pursuers (>=1)
-    - Multiple Evaders (>=1)
+    - Multiple Obstacles (<=14)
+    - 1 Pursuer
+    - 1 Evader 
     - Homogeneous agents
+Note:
+    - Discrete action space
 """
 import numpy as np
+import cv2
 from numpy import pi
 from numpy import random
 import time
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, RegularPolygon, Circle
 from matplotlib.collections import PatchCollection
-import cv2
+from pe_discrete import PursuitEvasionDiscrete
 
-class PursuitEvasion:
+
+class PursuitEvasionOneVsOneDiscrete(PursuitEvasionDiscrete):
     """
-    Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=4)
+    Dynamics Pursuit-evasion env: 1 pursuer, 1 evader, discrete action space 
     """
-    def __init__(self, resolution=(150, 150)):
-        # Env specs #
-        self.name='mpme' # dynamic multi-pursuer multi-evader
-        self.rate = 20 # Hz
-        self.max_episode_steps = 1000
-        self.resolution = resolution
-        self.world_length = 10
-        self.damping = 0.1
-        self.max_num_evaders = 4
-        self.max_num_pursuers = 4
-        self.num_evaders = random.randint(1,self.max_num_evaders+1)
-        self.num_pursuers = random.randint(1,self.max_num_pursuers+1)
-        self.obstacle_patches = []
-        self.evader_patches = []
-        self.pursuer_patches = []
-        self.interfere_radius = 0.4
-        self.action_space_low = -2.
-        self.action_space_high = 2.
-        self.evader_max_speed = 2. # max speed on x or y
-        self.pursuer_max_speed = 2. 
-        self.evader_radius = 0.1
-        self.evader_mass = 0.4
-        self.pursuer_radius = 0.1
-        self.pursuer_mass = 0.4
-        self.max_num_ellipses = 7
-        self.max_num_polygons = 7
-        self.num_ellipses = random.randint(1,self.max_num_ellipses+1)
-        self.num_polygons = random.randint(1,self.max_num_polygons+1)
-        ## next 7 lines compute grid coordinates
-        step_x, step_y = self.world_length/resolution[0], self.world_length/resolution[1]
-        x_coords = np.linspace((-self.world_length+step_x)/2, (self.world_length-step_x)/2, resolution[0])
-        y_coords = -np.linspace((-self.world_length+step_y)/2, (self.world_length-step_y)/2, resolution[1]) # don't forget the negative sign, so that y goes from top to bottom
-        self.pix_coords = np.zeros((resolution[0]*resolution[1], 2))
-        for i in range(len(x_coords)):
-            for j in range(len(y_coords)):
-                self.pix_coords[i*len(x_coords)+j] = np.array([x_coords[i], y_coords[j]])
-        # Prepare renderer #
-        self.map = np.zeros((self.resolution[0],self.resolution[1],3))
-        self.fig = plt.figure(figsize=(10, 10))
-        self.ax = self.fig.add_subplot(111)
+    def __init__(self, resolution=(100, 100)):
+        super().__init__(resolution)
+        self.name = '1p1e_discrete'
+        self.num_evaders = 1
+        self.num_pursuers = 1
+        self.action_reservoir = np.array([[0,0], [0,1], [0,-1], [-1,0], [1,0]])  # 0: None, 1: Up, 2: Down, 3: Left, 4: Right
 
     def reset(self):
         """
@@ -68,8 +38,6 @@ class PursuitEvasion:
         Return:
             obs: map image
         """
-        self.num_evaders = random.randint(1,self.max_num_evaders+1)
-        self.num_pursuers = random.randint(1,self.max_num_pursuers+1)
         self.num_ellipses = random.randint(1,self.max_num_ellipses+1)
         self.num_polygons = random.randint(1,self.max_num_polygons+1)
         # Init evader dict
@@ -151,19 +119,23 @@ class PursuitEvasion:
 
         return obs
 
-    def step(self, actions):
+    def step(self, action_indices):
         """
         Agents take velocity command
         Args:
-            actions: array([[fx_e0,fy_e0],[fx_e1,fy_e1],...,[fx_pN,fy_pN]])
+            action_indices: array([a_e, a_p])
         Returns:
             obs: map image
-            reward:
-            done: bool
-            info: ''
+            reward: array([r_e, r_p])
+            done: bool array([d_e, d_p])
+            info: episode result or ''
         """
-        # Check input
-        assert actions.shape == (self.num_evaders+self.num_pursuers, 2)
+        # Check input and convert index into actual force
+        assert action_indices.shape == (self.num_evaders+self.num_pursuers,)
+        assert all(action_indices>=0) and all(action_indices<self.action_reservoir.shape[0])
+        actions = np.zeros([self.num_evaders+self.num_pursuers, 2])
+        for i in range(actions.shape[0]):
+            actions[i] = self.action_reservoir[action_indices[i]]
         # Default reward, done, info
         bonus = np.zeros(self.num_evaders+self.num_pursuers) # add bonus when key event detected
         reward = np.zeros(self.num_evaders + self.num_pursuers)
@@ -185,7 +157,6 @@ class PursuitEvasion:
                         self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius),
                     ]
                 ):
-                    # self._disable_evader(id=ie)
                     self.evaders['status'][ie] = 'deactivated'
                     bonus[ie] = -self.max_episode_steps/10.
                 else:
@@ -218,7 +189,6 @@ class PursuitEvasion:
                         self._is_occluded(self.pursuers['position'][ip], radius=self.pursuer_radius),
                     ]
                 ):
-                    # self._disable_pursuer(id=ip)
                     self.pursuers['status'][ip] = 'deactivated'
                     bonus[-self.num_pursuers+ip] = -self.max_episode_steps/10.
                 else:
@@ -231,7 +201,6 @@ class PursuitEvasion:
                 for ie in range(self.num_evaders):
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
-                            # self._disable_evader(id=ie)
                             self.evaders['status'][ie] = 'deactivated'
                             bonus[ie] = -self.max_episode_steps/10.
                             bonus[-self.num_pursuers+ip] = self.max_episode_steps/10.
@@ -268,129 +237,24 @@ class PursuitEvasion:
 
         return obs, reward, done, info
 
-    def render(self, pause=2):
-        self.ax = self.fig.get_axes()[0]
-        self.ax.cla()
-        # Plot world boundary #
-        bound = plt.Rectangle((-self.world_length/2,-self.world_length/2), self.world_length, self.world_length, linewidth=3, color='k', fill=False)
-        self.ax.add_patch(bound)
-        # Draw objects: obstacles, evaders, pursuers #
-        patches_collection = PatchCollection(self.obstacle_patches+self.evader_patches+self.pursuer_patches, match_original=True) # match_origin prevent PatchCollection mess up original color
-        self.ax.add_collection(patches_collection)
-        ## depict evaders
-        evader_trajectories = np.array(self.evaders['trajectory'])
-        for ie in range(self.num_evaders):
-            if self.evaders['status'][ie]=='active':
-                ### text annotation
-                self.ax.annotate(
-                    self.evaders['names'][ie], # pursuer name
-                    (self.evaders['position'][ie,0], self.evaders['position'][ie,1]), # name label location
-                    textcoords="offset points", # how to position the text
-                    xytext=(0,10), # distance from text to points (x,y)
-                    ha='center')
-                ### draw evader trajectories
-                self.ax.plot(evader_trajectories[:,ie,0], evader_trajectories[:,ie,1], linestyle='--', linewidth=0.5, color='orangered')
-        ## depict pursuers
-        pursuer_trajectories = np.array(self.pursuers['trajectory'])
-        for ip in range(self.num_pursuers):
-            if self.pursuers['status'][ip]=='active':
-                # text annotation
-                self.ax.annotate(
-                    self.pursuers['names'][ip], # pursuer name
-                    (self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), # name label location
-                    textcoords="offset points", # how to position the text
-                    xytext=(0,10), # distance from text to points (x,y)
-                    ha='center')
-                ### draw pursuer trajectories
-                self.ax.plot(pursuer_trajectories[:,ip,0], pursuer_trajectories[:,ip,1], linestyle='--', linewidth=0.5, color='deepskyblue')
-                ### draw interfere circle
-                interfere_circle = plt.Circle((self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), self.interfere_radius, color='deepskyblue', linestyle='dashed', fill=False)
-                self.ax.add_patch(interfere_circle)
-        # Set axis
-        self.ax.axis(1.1/2*np.array([-self.world_length,self.world_length,-self.world_length,self.world_length]))
-        self.ax.set_xlabel('X', fontsize=20)
-        self.ax.set_ylabel('Y', fontsize=20)
-        self.ax.set_xticks(np.arange(-5, 6))
-        self.ax.set_yticks(np.arange(-5, 6))
-        self.ax.grid(color='grey', linestyle=':', linewidth=0.5)
-        ## pause
-        plt.pause(pause) # 1/16x to 16x
-        self.fig.show()
-        # plt.show(block=False)
-        # plt.pause(pause)
 
-
-    def _is_outbound(self, pos, radius):
-        """
-        Detect a given position is out of boundary or not
-        """
-        out_flag = False
-        if np.absolute(pos[0])>=self.world_length/2-radius or np.absolute(pos[1])>=self.world_length/2-radius:
-            out_flag = True
-            # print("\nOUT!\n") #debug
-
-        return out_flag
-
-    def _is_occluded(self, pos, radius):
-        """
-        Detect a given position is occluded by
-        """
-        occ_flag = False
-        for p in self.obstacle_patches:
-            occ_flag = p.contains_point(pos, radius=radius)
-            if occ_flag:
-                break
-
-        return occ_flag
-
-    def _is_interfered(self, pos, radius):
-        """
-        Detect a given agent is interfered by other agents
-        """
-        int_flag = False
-        sum_agent_pos = np.concatenate((self.evaders['position'], self.pursuers['position']))
-        for ap in sum_agent_pos:
-            int_flag = (0<np.linalg.norm(pos-ap)<=radius) # don't forget self
-            if int_flag:
-                break
-
-        return int_flag
-
-    def _get_map(self, patch_list, radius):
-        patch_pix = np.array([False]*self.pix_coords.shape[0])
-        for p in patch_list:
-            patch_pix = np.logical_or(patch_pix, p.contains_points(self.pix_coords, radius=radius))
-        map = patch_pix.reshape(self.resolution)
-
-        return map
-
-    # def _disable_pursuer(self, id):
-    #     self.pursuers['position'][id] = np.inf*np.ones(2)
-    #     self.pursuers['velocity'][id] = np.zeros(2)
-    #     self.pursuers['status'][id] = 'deactivated'
-
-    # def _disable_evader(self, id):
-    #     self.evaders['position'][id] = np.inf*np.ones(2)
-    #     self.evaders['velocity'][id] = np.zeros(2)
-    #     self.evaders['status'][id] = 'deactivated'
-
-
-if __name__ == '__main__':
-    env=PursuitEvasion()
-    # env.render()
-    for ep in range(10):
+# usage example
+if __name__=='__main__':
+    env = PursuitEvasionOneVsOneDiscrete()
+    for ep in range(4):
         obs = env.reset()
         for st in range(env.max_episode_steps):
-            env.render(pause=1./2)
-            actions = np.random.uniform(-4,4,size=(env.num_evaders+env.num_pursuers,2))
-            obs, rew, done, info = env.step(actions)
+            env.render(pause=1./env.rate)
+            ia= np.random.randint(env.action_reservoir.shape[0], size=env.num_evaders+env.num_pursuers)
+            obs, rew, done, info = env.step(ia)
             img = obs[:,:,[2,1,0]]
             cv2.imshow('map', cv2.resize(img, (360, 360)))
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
             print("\nevaders_pos: {} \npursuers_pos: {} \nreward: {} \ndone: {}".format(env.evaders['position'], env.pursuers['position'], rew, done))
-
             if info:
                 print(info)
                 break
     cv2.destroyAllWindows()
+            
+

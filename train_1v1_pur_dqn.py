@@ -9,7 +9,7 @@ import logging
 logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
 
 
-from envs.pe_env_1v1_discrete import PursuitEvasionOneVsOneDiscrete
+from envs.pe_1v1_discrete import PursuitEvasionOneVsOneDiscrete
 from agents.dqn import DQNAgent
 
 
@@ -60,8 +60,9 @@ if __name__=='__main__':
                 if done[0]:
                     success_counter += 1
                 logging.info(
-                    "\n================\nEpisode: {} \nEpisodeLength: {} \nEpisodeTotalRewards: {} \nAveragedTotalReward: {} \nSuccess: {} \nTime: {} \n================\n".format(
+                    "\n================\nEpisode: {} \nEpsilon: {} \nEpisodeLength: {} \nEpisodeTotalRewards: {} \nAveragedTotalReward: {} \nSuccess: {} \nTime: {} \n================\n".format(
                         ep+1, 
+                        agent_p.epsilon,
                         st+1, 
                         ep_rew,
                         sedimentary_returns[-1],
