@@ -160,8 +160,7 @@ if __name__ == '__main__':
             cv2.imshow('map', cv2.resize(img, (360, 360)))
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
-            print("\nreward: {} \ndone: {}".format(rew, done))
-
+            print("\nevaders_pos: {} \npursuers_pos: {} \nreward: {} \ndone: {}".format(env.evaders['position'], env.pursuers['position'], rew, done))
             if info:
                 print(info)
                 break
