@@ -21,7 +21,7 @@ if gpus:
         print(e)
     # Restrict TensorFlow to only use the first GPU
     try:
-        tf.config.experimental.set_visible_devices(gpus[1], 'GPU')
+        tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
     except RuntimeError as e:
@@ -156,7 +156,7 @@ class DQNAgent:
             targ_qvals = minibatch['rew'] + (1. - minibatch['done'])*self.gamma*nxt_qvals
             # compute loss
             loss_q = self.loss_fn(y_true=targ_qvals, y_pred=pred_qvals)
-            # logging.info("loss_Q: {}".format(loss_q))
+            logging.info("loss_Q: {}".format(loss_q))
         # gradient decent
         grads = tape.gradient(loss_q, self.dqn_active.trainable_weights)
         self.optimizer.apply_gradients(zip(grads, self.dqn_active.trainable_weights))

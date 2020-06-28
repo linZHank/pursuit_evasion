@@ -58,7 +58,7 @@ if __name__=='__main__':
                 if done[0]:
                     success_counter += 1
                 logging.info(
-                    "\n================\nEpisode: {} \nEpisodeLength: {} \nEpisodeTotalRewards: {} \nAveragedTotalReward: {} \nSuccess: {} \nTime: {}".format(
+                    "\n================\nEpisode: {} \nEpisodeLength: {} \nEpisodeTotalRewards: {} \nAveragedTotalReward: {} \nSuccess: {} \nTime: {} \n================\n".format(
                         ep+1, 
                         st+1, 
                         ep_rew,

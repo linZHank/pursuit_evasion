@@ -157,7 +157,8 @@ class PursuitEvasionOneVsOneDiscrete(PursuitEvasion):
                         self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius),
                     ]
                 ):
-                    self._disable_evader(id=ie)
+                    # self._disable_evader(id=ie)
+                    self.evaders['status'][ie] = 'deactivated'
                     bonus[ie] = -self.max_episode_steps/10.
                 else:
                     bonus[ie] = -np.linalg.norm(actions[ie])/10.
@@ -189,7 +190,8 @@ class PursuitEvasionOneVsOneDiscrete(PursuitEvasion):
                         self._is_occluded(self.pursuers['position'][ip], radius=self.pursuer_radius),
                     ]
                 ):
-                    self._disable_pursuer(id=ip)
+                    # self._disable_pursuer(id=ip)
+                    self.pursuers['status'][ip] = 'deactivated'
                     bonus[-self.num_pursuers+ip] = -self.max_episode_steps/10.
                 else:
                     bonus[-self.num_pursuers+ip] = -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
@@ -201,7 +203,8 @@ class PursuitEvasionOneVsOneDiscrete(PursuitEvasion):
                 for ie in range(self.num_evaders):
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
-                            self._disable_evader(id=ie)
+                            # self._disable_evader(id=ie)
+                            self.evaders['status'][ie] = 'deactivated'
                             bonus[ie] = -self.max_episode_steps/10.
                             bonus[-self.num_pursuers+ip] = self.max_episode_steps/10.
         ## record pursuers trajectory
@@ -249,7 +252,7 @@ if __name__=='__main__':
             cv2.imshow('map', cv2.resize(img, (360, 360)))
             if cv2.waitKey(25) & 0xFF == ord('q'):
                 break
-            print("\nEpisode: {}, Step: {} \nreward: {} \ndone: {}".format(ep, st, rew, done))
+            print("\nevaders_pos: {} \npursuers_pos: {} \nreward: {} \ndone: {}".format(env.evaders['position'], env.pursuers['position'], rew, done))
 
             if info:
                 print(info)

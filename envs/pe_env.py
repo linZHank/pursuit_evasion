@@ -14,8 +14,7 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, RegularPolygon, Circle
 from matplotlib.collections import PatchCollection
-# import matplotlib.image as mpimg
-# import cv2
+import cv2
 
 class PursuitEvasion:
     """
@@ -186,7 +185,8 @@ class PursuitEvasion:
                         self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius),
                     ]
                 ):
-                    self._disable_evader(id=ie)
+                    # self._disable_evader(id=ie)
+                    self.evaders['status'][ie] = 'deactivated'
                     bonus[ie] = -self.max_episode_steps/10.
                 else:
                     bonus[ie] = -np.linalg.norm(actions[ie])/10.
@@ -218,7 +218,8 @@ class PursuitEvasion:
                         self._is_occluded(self.pursuers['position'][ip], radius=self.pursuer_radius),
                     ]
                 ):
-                    self._disable_pursuer(id=ip)
+                    # self._disable_pursuer(id=ip)
+                    self.pursuers['status'][ip] = 'deactivated'
                     bonus[-self.num_pursuers+ip] = -self.max_episode_steps/10.
                 else:
                     bonus[-self.num_pursuers+ip] = -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
@@ -230,7 +231,8 @@ class PursuitEvasion:
                 for ie in range(self.num_evaders):
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
-                            self._disable_evader(id=ie)
+                            # self._disable_evader(id=ie)
+                            self.evaders['status'][ie] = 'deactivated'
                             bonus[ie] = -self.max_episode_steps/10.
                             bonus[-self.num_pursuers+ip] = self.max_episode_steps/10.
         ## record pursuers trajectory
@@ -362,12 +364,33 @@ class PursuitEvasion:
 
         return map
 
-    def _disable_pursuer(self, id):
-        self.pursuers['position'][id] = np.inf*np.ones(2)
-        self.pursuers['velocity'][id] = np.zeros(2)
-        self.pursuers['status'][id] = 'deactivated'
+    # def _disable_pursuer(self, id):
+    #     self.pursuers['position'][id] = np.inf*np.ones(2)
+    #     self.pursuers['velocity'][id] = np.zeros(2)
+    #     self.pursuers['status'][id] = 'deactivated'
 
-    def _disable_evader(self, id):
-        self.evaders['position'][id] = np.inf*np.ones(2)
-        self.evaders['velocity'][id] = np.zeros(2)
-        self.evaders['status'][id] = 'deactivated'
+    # def _disable_evader(self, id):
+    #     self.evaders['position'][id] = np.inf*np.ones(2)
+    #     self.evaders['velocity'][id] = np.zeros(2)
+    #     self.evaders['status'][id] = 'deactivated'
+
+
+if __name__ == '__main__':
+    env=PursuitEvasion()
+    # env.render()
+    for ep in range(10):
+        obs = env.reset()
+        for st in range(env.max_episode_steps):
+            env.render(pause=1./2)
+            actions = np.random.uniform(-4,4,size=(env.num_evaders+env.num_pursuers,2))
+            obs, rew, done, info = env.step(actions)
+            img = obs[:,:,[2,1,0]]
+            cv2.imshow('map', cv2.resize(img, (360, 360)))
+            if cv2.waitKey(25) & 0xFF == ord('q'):
+                break
+            print("\nevaders_pos: {} \npursuers_pos: {} \nreward: {} \ndone: {}".format(env.evaders['position'], env.pursuers['position'], rew, done))
+
+            if info:
+                print(info)
+                break
+    cv2.destroyAllWindows()

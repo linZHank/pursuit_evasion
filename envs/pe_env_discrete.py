@@ -65,7 +65,8 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                         self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius),
                     ]
                 ):
-                    self._disable_evader(id=ie)
+                    # self._disable_evader(id=ie)
+                    self.evaders['status'][ie] = 'deactivated'
                     bonus[ie] = -self.max_episode_steps/10.
                 else:
                     bonus[ie] = -np.linalg.norm(actions[ie])/10.
@@ -97,7 +98,8 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                         self._is_occluded(self.pursuers['position'][ip], radius=self.pursuer_radius),
                     ]
                 ):
-                    self._disable_pursuer(id=ip)
+                    # self._disable_pursuer(id=ip)
+                    self.pursuers['status'][ip] = 'deactivated'
                     bonus[-self.num_pursuers+ip] = -self.max_episode_steps/10.
                 else:
                     bonus[-self.num_pursuers+ip] = -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
@@ -109,7 +111,8 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                 for ie in range(self.num_evaders):
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
-                            self._disable_evader(id=ie)
+                            # self._disable_evader(id=ie)
+                            self.evaders['status'][ie] = 'deactivated'
                             bonus[ie] = -self.max_episode_steps/10.
                             bonus[-self.num_pursuers+ip] = self.max_episode_steps/10.
         ## record pursuers trajectory
