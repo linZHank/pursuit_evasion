@@ -17,7 +17,7 @@ if __name__=='__main__':
     # instantiate env
     env = PursuitEvasionOneVsOneDiscrete(resolution=(150,150))
     # parameter
-    num_episodes = 2500
+    num_episodes = 3000
     num_steps = env.max_episode_steps
     # variables
     step_counter = 0
@@ -33,6 +33,7 @@ if __name__=='__main__':
         obs, ep_rew = env.reset(), 0
         img = obs.copy()
         odom = np.concatenate((env.pursuers['position'][0],env.pursuers['velocity'][0]), axis=-1)
+        agent_p.linear_epsilon_decay(curr_ep=ep)
         for st in range(num_steps):
             # render for debug purpose
             # env.render(pause=1./env.rate)
