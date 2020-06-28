@@ -92,8 +92,8 @@ class DQNAgent:
     DQN agent class. epsilon decay, epsilon greedy, train, etc..
     """
     def __init__(self, name='dqn_agent', dim_img=(150,150,3), dim_odom=4, dim_act=5, buffer_size=int(1e7), decay_period=1000,
-                 warmup_episodes=100, init_epsilon=1., final_epsilon=.1, learning_rate=3e-4,
-                 loss_fn=tf.keras.losses.MeanSquaredError(), batch_size=1024, discount_rate=0.99, sync_step=4096):
+                 warmup_episodes=100, init_epsilon=1., final_epsilon=.1, learning_rate=1e-4,
+                 loss_fn=tf.keras.losses.MeanSquaredError(), batch_size=64, discount_rate=0.99, sync_step=4096):
         # hyper parameters
         self.name = name
         self.dim_act = dim_act
