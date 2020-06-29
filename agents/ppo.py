@@ -96,10 +96,16 @@ class Critic(tf.Module):
 #         super().__init__()
 #         self.actor = Actor(dim_img=dim_img, dim_odom=dim_odom, dim_act=dim_act)
 #         self.critic = Critic(dim_img=dim_img, dim_odom=dim_odom)
+
 class PPOAgent:
-    def __init__(self, name='ppo_agent', dim_img=(150,150,3), dim_odom=4, dim_act=2):
+    def __init__(self, name='ppo_agent', dim_img=(150,150,3), dim_odom=4, dim_act=2, clip_ratio=0.2):
+        self.clip_ratio = clip_ratio
         self.actor = Actor(dim_img, dim_odom, dim_act)
         self.critic = Critic(dim_img, dim_odom)
+        self.actor_optimizer = tf.keras.optimizers.Adam(learning_rate=lr_actor)
+        self.critic_optimizer = tf.keras.optimizers.Adam(learning_rate=lr_critic)
+        self.actor_loss_metric = tf.keras.metrics.Mean()
+        self.critic_loss_metric = tf.keras.metrics.Mean()
 
     def pi_given_state(self, img, odom):
         pi = self.actor._distribution(img, odom) # policy distribution (Gaussian)
@@ -109,7 +115,54 @@ class PPOAgent:
 
         return act.numpy(), val.numpy(), logp_a.numpy()
 
-
+    def train(self, replay_buffer, num_epochs, batch_size):
+        data = replay_buffer.get()
+        # create actor dataset
+        actor_dataset = tf.data.Dataset.from_tensor_slices(
+            (data['img'],
+            data['odom'],
+            data['act'],
+            data['adv'],
+            data['logp']
+        ))
+        actor_dataset.shuffle(buffer_size=1024).batch(batch_size)
+        # update actor
+        for epch in range(num_epochs):
+            logging.debug("Staring actor epoch: {}".format(epch))
+            for step, batch in enumerate(actor_dataset):
+                with tf.GradientTape() as tape:
+                    tape.watch(self.actor.trainable_variables)
+                    pi, logp = self.actor(batch[0], batch[1], batch[2]) # img, odom, act
+                    ratio = tf.math.exp(logp - batch[4])
+                    clip_adv = tf.math.multiply(tf.clip_by_value(ratio, 1-self.clip_ratio, 1+self.clip_ratio), batch[3])
+                    ent = tf.math.reduce_mean(pi.entropy(), axis=-1)
+                    obj = tf.math.minimum(tf.math.multiply(ratio, batch[3]), clip_adv) # -.01*ent
+                    loss_pi = -tf.math.reduce_mean(obj)
+                # gradient descent actor weights
+                grads_actor = tape.gradient(loss_pi, self.actor.trainable_variables)
+                self.actor_optimizer.apply_gradients(zip(grads_actor, self.actor.trainable_variables))
+                self.actor_loss_metric(loss_pi)
+                # log loss_pi
+                if not step%100:
+                    logging.debug("step {}: mean_loss = {}".format(step, self.actor_loss_metric.result()))
+        # create critic dataset 
+        critic_dataset = tf.data.Dataset.from_tensor_slices((data['img'], data['odom'], data['ret']))
+        critic_dataset.shuffle(buffer_size=1024).batch(batch_size)
+        # update critic
+        for epch in range(num_epochs):
+            logging.debug("Starting critic epoch: {}".format(epch))
+            for step, batch in enumerate(critic_dataset):
+                with tf.GradientTape() as tape:
+                    tape.watch(self.critic.trainable_variables)
+                    loss_v = tf.keras.losses.MSE(batch[2], self.critic(batch[0], batch[1]))
+                # gradient descent critic weights
+                grads_critic = tape.gradient(loss_v, self.critic.trainable_variables)
+                self.critic_optimizer.apply_gradients(zip(grads_critic, self.critic.trainable_variables))
+                self.critic_loss_metric(loss_v)
+                # log loss_v
+                if not step%100:
+                    logging.debug("step {}: mean_loss = {}".format(step, self.critic_loss_metric.result()))
+        
 # Test agent
 if __name__=='__main__':
     agent = PPOAgent()

@@ -17,7 +17,7 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, RegularPolygon, Circle
 from matplotlib.collections import PatchCollection
-from pe import PursuitEvasion
+from .pe import PursuitEvasion
 
 
 class PursuitEvasionDiscrete(PursuitEvasion):

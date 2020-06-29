@@ -17,8 +17,9 @@ if __name__=='__main__':
     # instantiate env
     env = PursuitEvasionOneVsOneDiscrete(resolution=(150,150))
     # parameter
-    num_episodes = 3000
+    num_episodes = 2000
     num_steps = env.max_episode_steps
+    train_freq = 80
     # variables
     step_counter = 0
     success_counter = 0
@@ -45,13 +46,16 @@ if __name__=='__main__':
             obs, rew, done, info = env.step(act)
             nxt_img = obs.copy()
             nxt_odom = np.concatenate((env.pursuers['position'][0],env.pursuers['velocity'][0]), axis=-1) 
+            ep_rew += rew[1]
+            step_counter += 1
             # store transition
             agent_p.replay_buffer.store(img, odom, act[1], rew[1], done[1], nxt_img, nxt_odom)
             # train one step
             if ep >= agent_p.warmup_episodes:
-                agent_p.train_one_step()
-            # finish step
-            ep_rew += rew[1]
+                if not step_counter%train_freq:
+                    for _ in range(train_freq):
+                        agent_p.train_one_step()
+            # finish step, EXTREMELY IMPORTANT!!!
             img = nxt_img.copy()
             odom = nxt_odom.copy()
             if info:
