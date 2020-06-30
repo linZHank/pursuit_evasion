@@ -6,6 +6,7 @@ import numpy as np
 import logging
 import tensorflow_probability as tfp
 tfd = tfp.distributions
+logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
 
 
 ################################################################
@@ -60,9 +61,6 @@ def net(dim_img, dim_odom, dim_output, activation, output_activation=None):
     return tf.keras.Model(inputs=[img_input, odom_input], outputs=outputs)
 
 class Actor(tf.Module):
-    """
-    Gaussian actor
-    """
     def __init__(self, dim_img, dim_odom, dim_act):
         super().__init__()
         self.log_std = tf.Variable(initial_value=-0.5*np.ones(dim_act, dtype=np.float32))
@@ -83,6 +81,7 @@ class Actor(tf.Module):
         if act is not None:
             logp_a = self._log_prob_from_distribution(pi, act)
 
+        return pi, logp_a
 class Critic(tf.Module):
     def __init__(self, dim_img, dim_odom):
         super().__init__()
@@ -91,11 +90,6 @@ class Critic(tf.Module):
     def __call__(self, img, odom):
         return tf.squeeze(self.val_net([img, odom]), axis=-1)
 
-# class ActorCritic(tf.Module):
-#     def __init__(self, dim_img, dim_odom, dim_act):
-#         super().__init__()
-#         self.actor = Actor(dim_img=dim_img, dim_odom=dim_odom, dim_act=dim_act)
-#         self.critic = Critic(dim_img=dim_img, dim_odom=dim_odom)
 
 class PPOAgent:
     def __init__(self, name='ppo_agent', dim_img=(150,150,3), dim_odom=4, dim_act=2, clip_ratio=0.2, lr_actor=1e-4,
@@ -116,17 +110,7 @@ class PPOAgent:
 
         return act.numpy(), val.numpy(), logp_a.numpy()
 
-    def train(self, replay_buffer, num_epochs, batch_size):
-        data = replay_buffer.get()
-        # create actor dataset
-        actor_dataset = tf.data.Dataset.from_tensor_slices(
-            (data['img'],
-            data['odom'],
-            data['act'],
-            data['adv'],
-            data['logp']
-        ))
-        actor_dataset.shuffle(buffer_size=1024).batch(batch_size)
+    def train(self, actor_dataset, critic_dataset, num_epochs):
         # update actor
         for epch in range(num_epochs):
             logging.debug("Staring actor epoch: {}".format(epch))
@@ -134,10 +118,10 @@ class PPOAgent:
                 with tf.GradientTape() as tape:
                     tape.watch(self.actor.trainable_variables)
                     pi, logp = self.actor(batch[0], batch[1], batch[2]) # img, odom, act
-                    ratio = tf.math.exp(logp - batch[4])
-                    clip_adv = tf.math.multiply(tf.clip_by_value(ratio, 1-self.clip_ratio, 1+self.clip_ratio), batch[3])
+                    ratio = tf.math.exp(logp - batch[3]) # pi/old_pi
+                    clip_adv = tf.math.multiply(tf.clip_by_value(ratio, 1-self.clip_ratio, 1+self.clip_ratio), batch[4])
                     ent = tf.math.reduce_mean(pi.entropy(), axis=-1)
-                    obj = tf.math.minimum(tf.math.multiply(ratio, batch[3]), clip_adv) # -.01*ent
+                    obj = tf.math.minimum(tf.math.multiply(ratio, batch[4]), clip_adv) # -.01*ent
                     loss_pi = -tf.math.reduce_mean(obj)
                 # gradient descent actor weights
                 grads_actor = tape.gradient(loss_pi, self.actor.trainable_variables)
@@ -145,10 +129,7 @@ class PPOAgent:
                 self.actor_loss_metric(loss_pi)
                 # log loss_pi
                 if not step%100:
-                    logging.debug("step {}: mean_loss = {}".format(step, self.actor_loss_metric.result()))
-        # create critic dataset 
-        critic_dataset = tf.data.Dataset.from_tensor_slices((data['img'], data['odom'], data['ret']))
-        critic_dataset.shuffle(buffer_size=1024).batch(batch_size)
+                    logging.debug("pi update step {}: mean_loss = {}".format(step, self.actor_loss_metric.result()))
         # update critic
         for epch in range(num_epochs):
             logging.debug("Starting critic epoch: {}".format(epch))
@@ -162,11 +143,20 @@ class PPOAgent:
                 self.critic_loss_metric(loss_v)
                 # log loss_v
                 if not step%100:
-                    logging.debug("step {}: mean_loss = {}".format(step, self.critic_loss_metric.result()))
+                    logging.debug("v update step {}: mean_loss = {}".format(step, self.critic_loss_metric.result()))
         
 # Test agent
 if __name__=='__main__':
     agent = PPOAgent()
-    img = np.random.rand(10,150,150,3)
-    odom = np.random.randn(10,4)
+    img = np.random.rand(100,150,150,3)
+    odom = np.random.randn(100,4)
+    act = np.random.randn(100,2)
+    logp = np.random.randn(100)
+    ret = np.random.randn(100)
+    adv = np.random.randn(100)
+    ads = tf.data.Dataset.from_tensor_slices((img, odom, act, logp, adv))
+    ads.shuffle(buffer_size=1024).batch(64)
+    cds = tf.data.Dataset.from_tensor_slices((img, odom, ret))
+    cds.shuffle(buffer_size=1024).batch(64)
     a, v, l = agent.pi_given_state(img, odom)
+    agent.train(ads, cds, 5)

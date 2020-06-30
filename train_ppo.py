@@ -77,7 +77,6 @@ class PPOBuffer:
         rew_buf = np.array(self.rew_buf) 
         ret_buf = np.array(self.ret_buf) 
         adv_buf = np.array(self.adv_buf) 
-        val_buf = np.array(self.val_buf) 
         # next three lines implement advantage normalization
         adv_mean = np.mean(adv_buf)
         adv_std = np.std(adv_buf)
