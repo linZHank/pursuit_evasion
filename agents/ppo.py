@@ -98,7 +98,8 @@ class Critic(tf.Module):
 #         self.critic = Critic(dim_img=dim_img, dim_odom=dim_odom)
 
 class PPOAgent:
-    def __init__(self, name='ppo_agent', dim_img=(150,150,3), dim_odom=4, dim_act=2, clip_ratio=0.2):
+    def __init__(self, name='ppo_agent', dim_img=(150,150,3), dim_odom=4, dim_act=2, clip_ratio=0.2, lr_actor=1e-4,
+                 lr_critic=1e-3):
         self.clip_ratio = clip_ratio
         self.actor = Actor(dim_img, dim_odom, dim_act)
         self.critic = Critic(dim_img, dim_odom)
