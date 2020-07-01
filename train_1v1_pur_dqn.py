@@ -15,7 +15,7 @@ from agents.dqn import DQNAgent
 
 if __name__=='__main__':
     # instantiate env
-    env = PursuitEvasionOneVsOneDiscrete(resolution=(150,150))
+    env = PursuitEvasionOneVsOneDiscrete()
     # parameter
     num_episodes = 2000
     num_steps = env.max_episode_steps
