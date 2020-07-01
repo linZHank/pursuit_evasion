@@ -21,7 +21,7 @@ class PursuitEvasion:
     """
     Dynamics Pursuit-evasion env: N pursuers, N evader (1<=N<=4)
     """
-    def __init__(self, resolution=(150, 150)):
+    def __init__(self, resolution=(80, 80)):
         # Env specs #
         self.name='npne' # dynamic multi-pursuer multi-evader
         self.rate = 20 # Hz
@@ -187,7 +187,7 @@ class PursuitEvasion:
                     ]
                 ):
                     self.evaders['status'][ie] = 'deactivated'
-                    bonus[ie] = -self.max_episode_steps/10.
+                    bonus[ie] = -self.action_space_high*self.max_episode_steps/10.
                 else:
                     bonus[ie] = -np.linalg.norm(actions[ie])/10.
             else:
@@ -219,7 +219,7 @@ class PursuitEvasion:
                     ]
                 ):
                     self.pursuers['status'][ip] = 'deactivated'
-                    bonus[-self.num_pursuers+ip] = -self.max_episode_steps/10.
+                    bonus[-self.num_pursuers+ip] = -self.action_space_high*self.max_episode_steps/10.
                 else:
                     bonus[-self.num_pursuers+ip] = -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
             else:
@@ -231,8 +231,8 @@ class PursuitEvasion:
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
                             self.evaders['status'][ie] = 'deactivated'
-                            bonus[ie] = -self.max_episode_steps/10.
-                            bonus[-self.num_pursuers+ip] = self.max_episode_steps/10.
+                            bonus[ie] = -self.action_space_high*self.max_episode_steps/10.
+                            bonus[-self.num_pursuers+ip] = self.action_space_high*self.max_episode_steps/10.
         ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故

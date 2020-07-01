@@ -68,7 +68,10 @@ class PPOBuffer:
         self.ret_buf += list(discount_cumsum(np.append(rews, last_val), self.gamma)[:-1])
         self.episode_start_idx = self.ptr
 
-    def create_datasets(self):
+    def get(self):
+        """
+        Get a data dicts from replay buffer
+        """
         # convert list to array
         img_buf = np.array(self.img_buf)
         odom_buf = np.array(self.odom_buf)
@@ -81,19 +84,29 @@ class PPOBuffer:
         adv_mean = np.mean(adv_buf)
         adv_std = np.std(adv_buf)
         adv_buf = (adv_buf - adv_mean) / adv_std
-        # create dataset for training actor
-        actor_dataset = tf.data.Dataset.from_tensor_slices((img_buf, odom_buf, act_buf, logp_buf, adv_buf))
-        actor_dataset.shuffle(buffer_size=1024).batch(self.batch_size)
-        # create dataset for training critic
-        critic_dataset = tf.data.Dataset.from_tensor_slices((img_buf, odom_buf, ret_buf))
-        critic_dataset.shuffle(buffer_size=1024).batch(self.batch_size)
-        
-        return actor_dataset, critic_dataset
+        # create data dict for training actor
+        actor_data = dict(
+            img = tf.convert_to_tensor(img, dtype=tf.float32),
+            odom = tf.convert_to_tensor(odom, dtype=tf.float32),
+            act = tf.convert_to_tensor(act, dtype=tf.float32),
+            logp = tf.convert_to_tensor(logp, dtype=tf.float32),
+            adv = tf.convert_to_tensor(adv, dtype=tf.float32)
+        )
+        # create data dict for training critic
+        critic_data = dict(
+            img = tf.convert_to_tensor(img, dtype=tf.float32),
+            odom = tf.convert_to_tensor(odom, dtype=tf.float32),
+            ret = tf.convert_to_tensor(ret, dtype=tf.float32)
+        )
+
+        return actor_data, critic_data
+
 
 if __name__=='__main__':
     env = PursuitEvasion()
-    agent = PPOAgent(name='test_ppo_agent')
     obs = env.reset()
+    agent_e = PPOAgent(name='ppo_evader')
+    agent_p = PPOAgent(name='ppo_pursuer')
     num_e = env.num_evaders
     num_p = env.num_pursuers
     img = obs.copy()
