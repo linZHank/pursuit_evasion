@@ -24,7 +24,7 @@ class PursuitEvasionDiscrete(PursuitEvasion):
     """
     Dynamics Pursuit-evasion env: multiple pursuers, multiple evaders, discrete action space
     """
-    def __init__(self, resolution=(100, 100)):
+    def __init__(self, resolution=(80, 80)):
         super().__init__(resolution)
         self.name = 'npne_discrete'
         self.action_reservoir = np.array([[0,0], [0,1], [0,-1], [-1,0], [1,0]])  # 0: None, 1: Up, 2: Down, 3: Left, 4: Right
@@ -68,7 +68,7 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                     ]
                 ):
                     self.evaders['status'][ie] = 'deactivated'
-                    bonus[ie] = -self.action_space_high*self.max_episode_steps/10.
+                    bonus[ie] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
                 else:
                     bonus[ie] = -np.linalg.norm(actions[ie])/10.
             else:
@@ -100,7 +100,7 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                     ]
                 ):
                     self.pursuers['status'][ip] = 'deactivated'
-                    bonus[-self.num_pursuers+ip] = -self.action_space_high*self.max_episode_steps/10.
+                    bonus[-self.num_pursuers+ip] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
                 else:
                     bonus[-self.num_pursuers+ip] = -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
             else:
@@ -112,8 +112,8 @@ class PursuitEvasionDiscrete(PursuitEvasion):
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
                             self.evaders['status'][ie] = 'deactivated'
-                            bonus[ie] = -self.action_space_high*self.max_episode_steps/10.
-                            bonus[-self.num_pursuers+ip] = self.action_space_high*self.max_episode_steps/10.
+                            bonus[ie] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                            bonus[-self.num_pursuers+ip] = np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
         ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故

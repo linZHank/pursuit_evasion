@@ -17,7 +17,7 @@ if __name__=='__main__':
     # instantiate env
     env = PursuitEvasionOneVsOneDiscrete()
     # parameter
-    num_episodes = 2000
+    num_episodes = 4000
     num_steps = env.max_episode_steps
     train_freq = 80
     # variables
@@ -28,7 +28,7 @@ if __name__=='__main__':
     ep_rew = 0
     # instantiate agent
     agent_p = DQNAgent(name='dqn_pursuer')
-    model_dir = os.path.join(sys.path[0], 'saved_models', env.name, agent_p.name, 'models')
+    model_path = os.path.join(sys.path[0], 'saved_models', env.name, agent_p.name, 'models')
     start_time = time.time()
     for ep in range(num_episodes):
         obs, ep_rew = env.reset(), 0
@@ -76,13 +76,14 @@ if __name__=='__main__':
                 )
                 break
                 
-    # save model
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
-    agent_p.dqn_active.save_model(model_dir)
-    
     # plot averaged returns
     fig, ax = plt.subplots(figsize=(8, 6))
     fig.suptitle('Averaged Returns')
     ax.plot(sedimentary_returns)
     plt.show()
+
+    # save model
+    if not os.path.exists(model_path):
+        os.makedirs(os.path.dirname(model_path))
+    agent_p.dqn_active.save(model_path)
+    

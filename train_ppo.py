@@ -104,15 +104,29 @@ class PPOBuffer:
 
 if __name__=='__main__':
     env = PursuitEvasion()
-    obs = env.reset()
     agent_e = PPOAgent(name='ppo_evader')
     agent_p = PPOAgent(name='ppo_pursuer')
-    num_e = env.num_evaders
-    num_p = env.num_pursuers
+    # parameters
+    buffer_size = int(1e3)
+    on_policy_ep = 0
+    for ep in range(num_episodes):
+        obs = env.reset()
+        num_e = env.num_evaders
+        num_p = env.num_pursuers
+        done = np.array([False]*(num_e+num_p))
+        acts = np.zeros((num_e+num_p, 2))
+        vals = np.zeros(num_e+num_p)
+        logps = np.zeros(num_e+num_p)
+        evader_buf_collection = [PPOBuffer(size=buffer_size)]*num_e
+        pursuer_buf_collection = [PPOBuffer(size=buffer_size)]*num_p
+        for st in range(num_steps):
+            acts = np.zeros((num_e+num_p, 2))
+            for ie in range(num_e):
+                if not done[ie]:
+                    acts[ie], vals[ie], logps[ie] = agent_e.pi_given_state(img, odom[ie])
+
     img = obs.copy()
     odom = np.concatenate((env.evaders['position'][0],env.evaders['velocity'][0]), axis=-1)
-    buf = PPOBuffer(size=10)
-    for _ in range(10):
         acts = np.random.randn(num_e+num_p, 2)
         a, v, logp = agent.pi_given_state(np.expand_dims(img, axis=0), np.expand_dims(odom, axis=0))
         acts[0] = a
