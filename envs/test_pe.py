@@ -3,7 +3,7 @@ import cv2
 from pe import PursuitEvasion
 if __name__ == '__main__':
     env=PursuitEvasion()
-    for ep in range(10):
+    for ep in range(1):
         obs = env.reset()
         for st in range(env.max_episode_steps):
             env.render(pause=1./2)

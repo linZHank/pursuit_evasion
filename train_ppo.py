@@ -107,154 +107,40 @@ if __name__=='__main__':
     agent_e = PPOAgent(name='ppo_evader')
     agent_p = PPOAgent(name='ppo_pursuer')
     # parameters
+    num_episodes = 1
+    num_steps = env.max_episode_steps
     buffer_size = int(1e3)
     on_policy_ep = 0
     for ep in range(num_episodes):
         obs = env.reset()
         num_e = env.num_evaders
         num_p = env.num_pursuers
+        img = obs.copy()
+        odoms_e = np.concatenate((env.evaders['position'],env.evaders['velocity']), axis=-1)
+        odoms_p = np.concatenate((env.pursuers['position'],env.pursuers['velocity']), axis=-1)
+        acts_e = np.zeros((num_e, 2))
+        acts_p = np.zeros((num_p, 2))
+        vals_e = np.zeros(num_e)
+        logps_e = np.zeros(num_e)
         done = np.array([False]*(num_e+num_p))
-        acts = np.zeros((num_e+num_p, 2))
-        vals = np.zeros(num_e+num_p)
-        logps = np.zeros(num_e+num_p)
         evader_buf_collection = [PPOBuffer(size=buffer_size)]*num_e
         pursuer_buf_collection = [PPOBuffer(size=buffer_size)]*num_p
         for st in range(num_steps):
-            acts = np.zeros((num_e+num_p, 2))
+            acts_e = np.zeros((num_e, 2))
+            acts_p = np.zeros((num_p, 2))
             for ie in range(num_e):
                 if not done[ie]:
-                    acts[ie], vals[ie], logps[ie] = agent_e.pi_given_state(img, odom[ie])
+                    acts_e[ie], vals_e[ie], logps_e[ie] = agent_e.pi_given_state(
+                        np.expand_dims(img, axis=0),
+                        np.expand_dims(odoms_e[ie], axis=0)
+                    )
+            obs, rew, done, info = env.step(np.concatenate((acts_e,acts_p), axis=0))
+            img = obs.copy()
+            odoms_e = np.concatenate((env.evaders['position'],env.evaders['velocity']), axis=-1)
+            odoms_p = np.concatenate((env.pursuers['position'],env.pursuers['velocity']), axis=-1)
+            if info:
+                break
 
-    img = obs.copy()
-    odom = np.concatenate((env.evaders['position'][0],env.evaders['velocity'][0]), axis=-1)
-        acts = np.random.randn(num_e+num_p, 2)
-        a, v, logp = agent.pi_given_state(np.expand_dims(img, axis=0), np.expand_dims(odom, axis=0))
-        acts[0] = a
-        obs, rew, done, info = env.step(acts)
-        n_img = obs.copy()
-        n_odom = np.concatenate((env.evaders['position'][0],env.evaders['velocity'][0]), axis=-1) 
-        buf.store(img, odom, a, logp, rew[0], v[0])
-        img = n_img.copy()
-        odom = n_odom.copy()
-        if info:
-            break
-    buf.finish_episode()
-    ad, cd = buf.create_datasets()
-
-
-
-# class PPOBuffer:
-#     """
-#     A buffer for storing trajectories experienced by a PPO agent interacting
-#     with the environment, and using Generalized Advantage Estimation (GAE-Lambda)
-#     for calculating the advantages of state-action pairs.
-#     """
-#     def __init__(self, dim_img, dim_odom, dim_act, size, gamma=0.99, lam=0.95):
-#         self.obs_buf = np.zeros((size, dim_img[0], dim_img[1], dim_img[2]), dtype=np.float32)
-#         self.odom_buf = np.zeros(shape=(size, dim_odom), dtype=np.float32)
-#         self.act_buf = np.zeros((size, act_dim), dtype=np.float32)
-#         self.adv_buf = np.zeros(size, dtype=np.float32)
-#         self.rew_buf = np.zeros(size, dtype=np.float32)
-#         self.ret_buf = np.zeros(size, dtype=np.float32)
-#         self.val_buf = np.zeros(size, dtype=np.float32)
-#         self.logp_buf = np.zeros(size, dtype=np.float32)
-#         self.gamma, self.lam = gamma, lam
-#         self.ptr, self.path_start_idx, self.max_size = 0, 0, size
-# 
-#     def store(self, img, odom, act, rew, val, logp):
-#         assert self.ptr <= self.max_size     # buffer has to have room so you can store
-#         self.img_buf[self.ptr] = img
-#         self.odom_buf[self.ptr] = odom
-#         self.act_buf[self.ptr] = act
-#         self.rew_buf[self.ptr] = rew
-#         self.val_buf[self.ptr] = val
-#         self.logp_buf[self.ptr] = logp
-#         self.ptr += 1
-# 
-#     def finish_path(self, last_val=0):
-#         path_slice = slice(self.path_start_idx, self.ptr)
-#         rews = np.append(self.rew_buf[path_slice], last_val)
-#         vals = np.append(self.val_buf[path_slice], last_val)
-#         # the next two lines implement GAE-Lambda advantage calculation
-#         deltas = rews[:-1] + self.gamma * vals[1:] - vals[:-1]
-#         self.adv_buf[path_slice] = discount_cumsum(deltas, self.gamma * self.lam)
-#         # the next line computes rewards-to-go, to be targets for the value function
-#         self.ret_buf[path_slice] = discount_cumsum(rews, self.gamma)[:-1]
-#         self.path_start_idx = self.ptr
-#         # self.ptr, self.path_start_idx = 0, 0
-# 
-#     def get(self):
-#         assert self.ptr == self.max_size    # buffer has to be full before you can get
-#         self.ptr, self.path_start_idx = 0, 0
-#         # the next two lines implement the advantage normalization trick
-#         adv_mean = np.mean(self.adv_buf)
-#         adv_std = np.std(self.adv_buf)
-#         self.adv_buf = (self.adv_buf - adv_mean) / adv_std
-#         data = dict(obs=self.obs_buf, act=self.act_buf, ret=self.ret_buf,
-#                     adv=self.adv_buf, logp=self.logp_buf)
-#         return {k: tf.convert_to_tensor(v, dtype=tf.float32) for k,v in data.items()}
-    
-
-# # Main
-# # parameters
-# epochs = 4
-# steps_per_epoch = 100 # make sure this can cover several episodes
-# # prepare
-# env=PursuitEvasion()
-# obs = env.reset() # obs is map
-# num_evaders = env.num_evaders
-# num_pursuers = env.num_pursuers
-# total_steps = 0
-# ep_ret = np.zeros(num_evaders+num_pursuers)
-# ep_len = np.zeros(num_evaders+num_pursuers)
-# for ep in range(epochs):
-#     episode = 0
-#     while episode < episodes_per_epoch:
-#         odoms = compute_odometry(env)
-#         imgs = np.stack([np.zeros_like(obs) for _ in range(num_evaders+num_pursuers)], axis=0) # prepare storing images
-#         for ie in range(num_evaders):
-#            imgs[ie] = obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) # add noise N(0,0.01)
-#         for ip in range(num_pursuers):
-#            imgs[-num_pursuers+ip] = obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) 
-#         acts = np.zeros((num_evaders+num_pursuers,2))
-#         vals = np.zeros(num_evaders+num_pursuers)
-#         logps = np.zeros(num_evaders+num_pursuers)
-#         # compute actions
-#         acts = np.zeros((num_evaders+num_pursuers,2))
-#         for ie in range(num_evaders):
-#             if not done[ie]:
-#                 acts[ie], vals[ie], logps[ie] = agent_eva.step(imgs[ie], odoms[ie])
-#         for ip in range(num_pursuers):
-#             if not done[-num_pursuers+ip]:
-#                 acts[-num_pursuers+ip], vals[-num_pursuers+ip], logps[-num_pursuers+ip] =
-#                 agent_pur.step(imgs[-num_pursuers+ip], odoms[-num_pursuers+ip])
-#         # step env and obtain new obs
-#         next_obs, rew, done, info = env.step(acts)
-#         total_steps += 1
-#         # store experiences
-#         for ie in range(num_evaders):
-#             if not done[ie] or rew[ie]:
-#                 agent_eva.buffer.store(imgs[ie], odoms[ie], rews[ie], vals[ie], logps[ie]) 
-#         for ip in range(num_pursuers):
-#             if not done[-num_pursuers+ip] or rew[-num_pursuers+ip]:
-#                 agent_pur.buffer.store(imgs[-num_pursuers+ip], odoms[-num_pursuers+ip], rews[-num_pursuers+ip], vals[-num_pursuers+ip], logps[-num_pursuers+ip]) 
-#         obs = next_obs # THIS IS CRITICAL!!!
-#         timeout = (env.step_counter==env.max_episode_steps)
-# 
-#         if all(done[:num_evaders]) or all(done[-num_pursuers:]):
-#             episode += 1
-#             if all(done): # timeout
-#                 last_vals = np.zeros(num_evaders)
-#                 odoms = compute_odometry(env)
-#                 imgs = np.stack([np.zeros_like(obs) for _ in range(num_evaders+num_pursuers)], axis=0) # prepare storing images
-#                 for ie in range(num_evaders):
-#                     imgs[ie] = obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) # add noise N(0,0.01)
-#                     _, last_val[ie], _ = agent_eva.step(imgs[ie], odoms[ie])
-#                 for ip in range(num_pursuers):
-#                     imgs[-num_pursuers+ip] = obs.copy()+np.random.normal(loc=0, scale=0.01, size=obs.shape) 
-                
-        
-                
 
 
 

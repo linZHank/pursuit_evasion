@@ -92,7 +92,7 @@ class Critic(tf.Module):
 
 
 class PPOAgent:
-    def __init__(self, name='ppo_agent', dim_img=(150,150,3), dim_odom=4, dim_act=2, clip_ratio=0.2, lr_actor=1e-4,
+    def __init__(self, name='ppo_agent', dim_img=(80,80,3), dim_odom=4, dim_act=2, clip_ratio=0.2, lr_actor=1e-4,
                  lr_critic=1e-3, batch_size=32):
         self.clip_ratio = clip_ratio
         self.actor = Actor(dim_img, dim_odom, dim_act)
@@ -107,7 +107,7 @@ class PPOAgent:
         pi = self.actor._distribution(img, odom) # policy distribution (Gaussian)
         act = pi.sample()
         logp_a = self.actor._log_prob_from_distribution(pi, act)
-        val = self.critic(img, odom)
+        val = tf.squeeze(self.critic(img, odom), axis=-1)
 
         return act.numpy(), val.numpy(), logp_a.numpy()
 
