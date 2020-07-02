@@ -96,7 +96,7 @@ class DQNAgent:
     """
     def __init__(self, name='dqn_agent', dim_img=(80,80,3), dim_odom=4, dim_act=5, buffer_size=int(5e5),
                  decay_period=1000,
-                 warmup_episodes=200, init_epsilon=1., final_epsilon=.1, learning_rate=1e-4,
+                 warmup_episodes=200, init_epsilon=1., final_epsilon=.1, learning_rate=1e-3,
                  loss_fn=tf.keras.losses.MeanSquaredError(), batch_size=64, discount_rate=0.99, sync_step=4096):
         # hyper parameters
         self.name = name
