@@ -61,7 +61,6 @@ if __name__=='__main__':
                 sedimentary_returns.append(sum(episodic_returns)/(ep+1))
                 if done[0]:
                     success_counter += 1
-                    time.sleep(10)
                 logging.info(
                     "\n================\nEpisode: {} \nEpsilon: {} \nEpisodeLength: {} \nEpisodeTotalRewards: {} \nAveragedTotalReward: {} \nSuccess: {} \nTime: {} \n================\n".format(
                         ep+1, 

@@ -57,7 +57,7 @@ class PursuitEvasionOneVsOneDiscrete(PursuitEvasionDiscrete):
             status = ['deactivated']*self.num_pursuers
         )
         # Generate spawning positions
-        self.spawning_pool = random.uniform(-self.world_length/2, self.world_length/2, size=(self.num_evaders+self.num_pursuers,2))
+        self.spawning_pool = random.uniform(-self.world_length/2+.3, self.world_length/2-.3, size=(self.num_evaders+self.num_pursuers,2))
         self.step_counter = 0
         # Reset obstacles: you can add more shapes in the section below
         self.obstacle_patches = []
@@ -77,7 +77,7 @@ class PursuitEvasionOneVsOneDiscrete(PursuitEvasionDiscrete):
                     self._is_interfered(self.evaders['position'][ie], radius=2*self.evader_radius)
                 ]
             ): # evaders are sneaky so that they can stay closer to each other
-                self.evaders['position'][ie] = random.uniform(-self.world_length/2, self.world_length/2, 2)
+                self.evaders['position'][ie] = random.uniform(-self.world_length/2+.3, self.world_length/2-.3, 2)
         self.evaders['velocity'] = np.zeros((self.num_evaders,2))
         self.evaders['trajectory'].append(self.evaders['position'].copy())
         self.evaders['status'] = ['active']*self.num_evaders
@@ -98,7 +98,7 @@ class PursuitEvasionOneVsOneDiscrete(PursuitEvasionDiscrete):
                     self._is_interfered(self.pursuers['position'][ip], radius=2*self.interfere_radius)
                 ]
             ): # pursuer has to work safely so that they don't want to start too close to others
-                self.pursuers['position'][ip] = random.uniform(-self.world_length/2, self.world_length/2, 2)
+                self.pursuers['position'][ip] = random.uniform(-self.world_length/2+.3, self.world_length/2-.3, 2)
         self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         self.pursuers['status'] = ['active']*self.num_pursuers
