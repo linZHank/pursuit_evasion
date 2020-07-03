@@ -10,14 +10,14 @@ logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
 
 
 from envs.pe_1v1_discrete import PursuitEvasionOneVsOneDiscrete
-from agents.dqn import DQNAgent
+from agents.dqn_conv import DQNAgent
 
 
 if __name__=='__main__':
     # instantiate env
-    env = PursuitEvasionOneVsOneDiscrete()
+    env = PursuitEvasionOneVsOneDiscrete(resolution=(64,64))
     # parameter
-    num_episodes = 4000
+    num_episodes = 2000
     num_steps = env.max_episode_steps
     train_freq = 80
     # variables
@@ -33,7 +33,6 @@ if __name__=='__main__':
     for ep in range(num_episodes):
         obs, ep_rew = env.reset(), 0
         img = obs.copy()
-        odom = np.concatenate((env.pursuers['position'][0],env.pursuers['velocity'][0]), axis=-1)
         agent_p.linear_epsilon_decay(curr_ep=ep)
         for st in range(num_steps):
             # render for debug purpose
@@ -41,15 +40,14 @@ if __name__=='__main__':
             # cv2.imshow('map', img[:,:,[2,1,0]])
             # if cv2.waitKey(25) & 0xFF == ord('q'):
             #     break
-            act = np.array([0,0])
-            act[1] = agent_p.epsilon_greedy(img, odom)
+            act = np.zeros(2).astype(int)
+            act[1] = agent_p.epsilon_greedy(img)
             obs, rew, done, info = env.step(act)
             nxt_img = obs.copy()
-            nxt_odom = np.concatenate((env.pursuers['position'][0],env.pursuers['velocity'][0]), axis=-1) 
             ep_rew += rew[1]
             step_counter += 1
             # store transition
-            agent_p.replay_buffer.store(img, odom, act[1], rew[1], done[1], nxt_img, nxt_odom)
+            agent_p.replay_buffer.store(img, act[1], rew[1], done[1], nxt_img)
             # train one step
             if ep >= agent_p.warmup_episodes:
                 if not step_counter%train_freq:
@@ -57,12 +55,13 @@ if __name__=='__main__':
                         agent_p.train_one_step()
             # finish step, EXTREMELY IMPORTANT!!!
             img = nxt_img.copy()
-            odom = nxt_odom.copy()
+            logging.debug("\n-\nepisode: {}, step: {} \naction: {} \nreward: {} \ndone: {}".format(ep+1, st+1, act, rew, done))
             if info:
                 episodic_returns.append(ep_rew)
                 sedimentary_returns.append(sum(episodic_returns)/(ep+1))
                 if done[0]:
                     success_counter += 1
+                    time.sleep(10)
                 logging.info(
                     "\n================\nEpisode: {} \nEpsilon: {} \nEpisodeLength: {} \nEpisodeTotalRewards: {} \nAveragedTotalReward: {} \nSuccess: {} \nTime: {} \n================\n".format(
                         ep+1, 
