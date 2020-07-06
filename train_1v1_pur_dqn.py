@@ -17,7 +17,7 @@ if __name__=='__main__':
     # instantiate env
     env = PursuitEvasionOneVsOneDiscrete(resolution=(64,64))
     # parameter
-    num_episodes = 2000
+    num_episodes = 4000
     num_steps = env.max_episode_steps
     train_freq = 80
     # variables
