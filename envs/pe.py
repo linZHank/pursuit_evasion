@@ -159,9 +159,9 @@ class PursuitEvasion:
             actions: array([[fx_e0,fy_e0],[fx_e1,fy_e1],...,[fx_pN,fy_pN]])
         Returns:
             obs: map image
-            reward:
-            done: bool
-            info: ''
+            reward: array([r_e0,...,r_pN])
+            done: array([d_e0,...,d_pN]), bool
+            info: episode result or ''
         """
         # Check input
         assert actions.shape == (self.num_evaders+self.num_pursuers, 2)
