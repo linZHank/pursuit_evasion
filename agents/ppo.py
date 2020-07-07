@@ -123,8 +123,8 @@ class PPOAgent:
                                                 batch['adv'])
                     obj = tf.math.minimum(tf.math.multiply(ratio, batch['adv']), clip_adv) # -.01*ent
                     loss_pi = -tf.math.reduce_mean(obj)
-                    approx_kl = batch['logp'] - logp
-                    ent = tf.math.reduce_mean(pi.entropy(), axis=-1)
+                    approx_kl = tf.reshape(batch['logp'] - logp, shape=[-1])
+                    ent = tf.reshape(tf.math.reduce_sum(pi.entropy(), axis=-1), shape=[-1])
                 # gradient descent actor weights
                 grads_actor = tape.gradient(loss_pi, self.actor.trainable_variables)
                 self.actor_optimizer.apply_gradients(zip(grads_actor, self.actor.trainable_variables))

@@ -99,13 +99,13 @@ class PPOBuffer:
 if __name__=='__main__':
     # instantiate env
     env = PursuitEvasionOneVsOneContinuous(resolution=(80,80))
-    agent = PPOAgent(name='ppo_train', dim_img=(80,80,4))
+    agent = PPOAgent(name='ppo_train', dim_img=(80,80,4), target_kl=0.05)
     model_path = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'models')
     # parameter
-    num_episodes = 2000
+    num_episodes = 4000
     num_steps = env.max_episode_steps
     buffer_size = int(5e4)
-    update_every = 40
+    update_every = 50
     # variables
     step_counter = 0
     episode_counter = 0
@@ -156,12 +156,6 @@ if __name__=='__main__':
                 buf.finish_episode(last_val=val)
                 episodic_returns.append(ep_rew)
                 sedimentary_returns.append(sum(episodic_returns)/episode_counter)
-                # Update actor critic
-                if not episode_counter%update_every:
-                    # pdb.set_trace()
-                    actor_dataset, critic_dataset = buf.get()
-                    agent.train(actor_dataset, critic_dataset, num_epochs=80)
-                    buf.__init__(size=buffer_size)
                 logging.info(
                     "\n================\nEpisode: {} \nEpLength: {} \nTotalReward: {} \nSedReturn: {} \nSuccess: {} \nTime: {} \n================\n".format(
                         ep+1, 
@@ -172,6 +166,12 @@ if __name__=='__main__':
                         time.time()-start_time
                     )
                 )
+                # Update actor critic
+                if not episode_counter%update_every:
+                    # pdb.set_trace()
+                    actor_dataset, critic_dataset = buf.get()
+                    agent.train(actor_dataset, critic_dataset, num_epochs=80)
+                    buf.__init__(size=buffer_size)
                 break
                 
     # plot averaged returns
