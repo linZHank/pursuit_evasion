@@ -99,13 +99,14 @@ class PPOBuffer:
 if __name__=='__main__':
     # instantiate env
     env = PursuitEvasionOneVsOneContinuous(resolution=(80,80))
-    agent = PPOAgent(name='ppo_train', dim_img=(80,80,4), target_kl=0.05)
-    model_path = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'models')
+    agent = PPOAgent(name='ppo_train', dim_img=(80,80,4), lr_actor=1e-4, lr_critic=3e-4, batch_size=128, target_kl=0.2)
+    model_dir_actor = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'models', 'actor/')
+    model_dir_critic = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'models', 'critic/')
     # parameter
-    num_episodes = 4000
+    num_episodes = 20000
     num_steps = env.max_episode_steps
-    buffer_size = int(5e4)
-    update_every = 50
+    buffer_size = int(2e5)
+    update_every = 200
     # variables
     step_counter = 0
     episode_counter = 0
@@ -181,7 +182,10 @@ if __name__=='__main__':
     plt.show()
 
     # save model
-    if not os.path.exists(model_path):
-        os.makedirs(os.path.dirname(model_path))
-    agent.dqn_active.save(model_path)
+    if not os.path.exists(model_dir_actor):
+        os.makedirs(model_dir_actor)
+    if not os.path.exists(model_dir_critic):
+        os.makedirs(model_dir_critic)
+    tf.saved_model.save(agent.actor, model_dir_actor)
+    tf.saved_model.save(agent.critic, model_dir_critic)
     

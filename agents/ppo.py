@@ -81,6 +81,7 @@ class Critic(tf.Module):
         super().__init__()
         self.val_net = net(dim_inputs=dim_img, dim_outputs=1, activation='relu')
 
+    @tf.function
     def __call__(self, img):
         return tf.squeeze(self.val_net(img), axis=-1)
 
