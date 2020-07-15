@@ -103,7 +103,7 @@ if __name__=='__main__':
     model_dir_actor = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'models', 'actor/')
     model_dir_critic = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'models', 'critic/')
     # parameter
-    num_episodes = 20000
+    num_episodes = 100000
     num_steps = env.max_episode_steps
     buffer_size = int(3e5)
     update_every = 300

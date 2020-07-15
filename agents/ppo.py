@@ -23,9 +23,9 @@ if gpus:
     except RuntimeError as e:
         # Visible devices must be set before GPUs have been initialized
         print(e)
-    # Restrict TensorFlow to only use the first GPU
+    # Restrict TensorFlow to only use the specified GPU
     try:
-        tf.config.experimental.set_visible_devices(gpus[0], 'GPU')
+        tf.config.experimental.set_visible_devices(gpus[1], 'GPU')
         logical_gpus = tf.config.experimental.list_logical_devices('GPU')
         print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
     except RuntimeError as e:
@@ -122,10 +122,10 @@ class PPOAgent:
                     ratio = tf.math.exp(logp - batch['logp']) # pi/old_pi
                     clip_adv = tf.math.multiply(tf.clip_by_value(ratio, 1-self.clip_ratio, 1+self.clip_ratio),
                                                 batch['adv'])
-                    obj = tf.math.minimum(tf.math.multiply(ratio, batch['adv']), clip_adv) # -.01*ent
-                    loss_pi = -tf.math.reduce_mean(obj)
                     approx_kl = tf.reshape(batch['logp'] - logp, shape=[-1])
                     ent = tf.reshape(tf.math.reduce_sum(pi.entropy(), axis=-1), shape=[-1])
+                    obj = tf.math.minimum(tf.math.multiply(ratio, batch['adv']), clip_adv) + .01*ent
+                    loss_pi = -tf.math.reduce_mean(obj)
                 # gradient descent actor weights
                 grads_actor = tape.gradient(loss_pi, self.actor.trainable_variables)
                 self.actor_optimizer.apply_gradients(zip(grads_actor, self.actor.trainable_variables))
