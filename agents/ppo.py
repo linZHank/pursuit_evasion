@@ -124,7 +124,7 @@ class PPOAgent:
                                                 batch['adv'])
                     approx_kl = tf.reshape(batch['logp'] - logp, shape=[-1])
                     ent = tf.reshape(tf.math.reduce_sum(pi.entropy(), axis=-1), shape=[-1])
-                    obj = tf.math.minimum(tf.math.multiply(ratio, batch['adv']), clip_adv) + .01*ent
+                    obj = tf.math.minimum(tf.math.multiply(ratio, batch['adv']), clip_adv) # + .01*ent
                     loss_pi = -tf.math.reduce_mean(obj)
                 # gradient descent actor weights
                 grads_actor = tape.gradient(loss_pi, self.actor.trainable_variables)
