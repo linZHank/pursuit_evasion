@@ -1,3 +1,6 @@
+"""
+Scripts for training multiple pursuers with PPO algorithm. Evaders are fixed
+"""
 import sys
 import os
 import numpy as np
@@ -11,7 +14,7 @@ import logging
 logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
 
 
-from envs.pe_1v1_continuous import PursuitEvasionOneVsOneContinuous
+from envs.pe import PursuitEvasion
 from agents.ppo import PPOAgent
 
 
@@ -32,7 +35,7 @@ def discount_cumsum(x, discount):
 
 class PPOBuffer:
     def __init__(self, size, gamma=.99, lam=.95):
-        self.img_buf = []
+        self.obs_buf = []
         self.act_buf = []
         self.logp_buf = []
         self.rew_buf = []
@@ -43,9 +46,9 @@ class PPOBuffer:
         self.lam = lam
         self.ptr, self.episode_start_idx, self.max_size = 0, 0, size
 
-    def store(self, img, act, logp, rew, val):
+    def store(self, obs, act, logp, rew, val):
         assert self.ptr <= self.max_size
-        self.img_buf.append(img)
+        self.obs_buf.append(img)
         self.act_buf.append(act)
         self.logp_buf.append(logp)
         self.rew_buf.append(rew)
@@ -68,7 +71,7 @@ class PPOBuffer:
         Get a data dicts from replay buffer
         """
         # convert list to array
-        img_buf = np.array(self.img_buf)
+        obs_buf = np.array(self.obs_buf)
         act_buf = np.array(self.act_buf) 
         logp_buf = np.array(self.logp_buf)
         rew_buf = np.array(self.rew_buf) 
@@ -80,7 +83,7 @@ class PPOBuffer:
         adv_buf = (adv_buf - adv_mean) / adv_std
         # create data dict for training actor
         actor_data = dict(
-            img = tf.convert_to_tensor(img_buf, dtype=tf.float32),
+            obs = tf.convert_to_tensor(obs_buf, dtype=tf.float32),
             act = tf.convert_to_tensor(act_buf, dtype=tf.float32),
             logp = tf.convert_to_tensor(logp_buf, dtype=tf.float32),
             adv = tf.convert_to_tensor(adv_buf, dtype=tf.float32)
@@ -88,7 +91,7 @@ class PPOBuffer:
         actor_dataset = tf.data.Dataset.from_tensor_slices(actor_data)
         # create data dict for training critic
         critic_data = dict(
-            img = tf.convert_to_tensor(img_buf, dtype=tf.float32),
+            obs = tf.convert_to_tensor(obs_buf, dtype=tf.float32),
             ret = tf.convert_to_tensor(ret_buf, dtype=tf.float32)
         )
         critic_dataset = tf.data.Dataset.from_tensor_slices(critic_data)
@@ -98,22 +101,22 @@ class PPOBuffer:
 
 if __name__=='__main__':
     # instantiate env
-    env = PursuitEvasionOneVsOneContinuous(resolution=(80,80))
-    agent = PPOAgent(name='ppo_train', dim_img=(80,80,4), lr_actor=3e-4, lr_critic=1e-3, batch_size=128, target_kl=0.2)
-    model_dir_actor = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'models', 'actor/')
-    model_dir_critic = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'models', 'critic/')
+    env = PursuitEvasion(resolution=(80,80))
+    agent = PPOAgent(dim_obs=(80,80,4), dim_act=2, lr_actor=3e-4, lr_critic=1e-3, batch_size=128)
+    model_dir_actor = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'actor/')
+    model_dir_critic = os.path.join(sys.path[0], 'saved_models', env.name, agent.name, 'critic/')
     # parameter
-    num_episodes = 100000
+    num_episodes = int(1e6)
     num_steps = env.max_episode_steps
-    buffer_size = int(3e5)
-    update_every = 300
+    replay_size = int(1e5)
+    update_every = 100
     # variables
     step_counter = 0
     episode_counter = 0
     success_counter = 0
     episodic_returns = []
     sedimentary_returns = []
-    buf = PPOBuffer(size=buffer_size)
+    buf_list = [PPOBuffer(size=replay_size)]*4
     # instantiate agent
     start_time = time.time()
     for ep in range(num_episodes):
