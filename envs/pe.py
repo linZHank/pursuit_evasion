@@ -58,7 +58,7 @@ class PursuitEvasion:
             for j in range(len(y_coords)):
                 self.pix_coords[i*len(x_coords)+j] = np.array([x_coords[i], y_coords[j]])
         # Prepare renderer #
-        self.map = np.zeros((self.resolution[0],self.resolution[1],3))
+        self.image = np.zeros((self.resolution[0],self.resolution[1],3))
         self.fig = plt.figure(figsize=(10, 10))
         self.ax = self.fig.add_subplot(111)
 
@@ -69,39 +69,60 @@ class PursuitEvasion:
         Return:
             obs: map image
         """
+        # Prepare 
         self.num_evaders = random.randint(1,self.max_num_evaders+1)
         self.num_pursuers = random.randint(1,self.max_num_pursuers+1)
         self.num_ellipses = random.randint(1,self.max_num_ellipses+1)
         self.num_polygons = random.randint(1,self.max_num_polygons+1)
-        # Init evader dict
+        self.step_counter = 0
         self.evaders = dict(
-            names = ['e-'+str(i) for i in range(self.num_evaders)],
+            name = ['e-'+str(i) for i in range(self.num_evaders)],
             position = np.inf*np.ones((self.num_evaders, 2)),
             velocity = np.zeros((self.num_evaders, 2)),
             trajectory = [],
-            status = ['deactivated']*self.num_evaders
+            status = ['deactivated']*self.num_evaders,
         )
-        # Init pursuer dict
         self.pursuers = dict(
-            names = ['p-'+str(i) for i in range(self.num_pursuers)],
+            name = ['p-'+str(i) for i in range(self.num_pursuers)],
             position = np.inf*np.ones((self.num_pursuers, 2)),
             velocity = np.zeros((self.num_pursuers, 2)),
             trajectory = [],
-            status = ['deactivated']*self.num_pursuers
+            status = ['deactivated']*self.num_pursuers,
         )
-        # Generate spawning positions
-        self.spawning_pool = random.uniform(-self.world_length/2+.3, self.world_length/2-.3, size=(self.num_evaders+self.num_pursuers,2))
-        self.step_counter = 0
+        self.spawning_pool = random.uniform(
+            -self.world_length/2+.2, self.world_length/2-.2,
+            size=(self.num_evaders+self.num_pursuers,2)
+        ) # .2 threshold to avoid spawning too close to the walls
+        img_e = np.zeros((self.resolution[0], self.resolution[1]))
+        img_o = np.zeros((self.resolution[0], self.resolution[1]))
+        img_p = np.zeros((self.resolution[0], self.resolution[1]))
+        obs = np.zeros((self.num_evaders+self.num_pursuers+1, self.resolution[0], self.resolution[1]))
         # Reset obstacles: you can add more shapes in the section below
         self.obstacle_patches = []
         for _ in range(self.num_ellipses):
-            ellipse = Ellipse(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), width=random.uniform(self.world_length/10, self.world_length/7), height=random.uniform(self.world_length/10, self.world_length/7), angle=random.uniform(0,360), fc='grey')
+            ellipse = Ellipse(
+                xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), 
+                width=random.uniform(self.world_length/10, self.world_length/7), 
+                height=random.uniform(self.world_length/10, self.world_length/7), 
+                angle=random.uniform(0,360), 
+                fc='grey'
+            )
             self.obstacle_patches.append(ellipse)
         for _ in range(self.num_polygons):
-            reg_polygon = RegularPolygon(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), numVertices=random.randint(4,7), radius=random.uniform(self.world_length/10, self.world_length/7), orientation=random.uniform(-pi,pi), fc='grey')
+            reg_polygon = RegularPolygon(
+                xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), 
+                numVertices=random.randint(4,7), 
+                radius=random.uniform(self.world_length/10, self.world_length/7), 
+                orientation=random.uniform(-pi,pi), 
+                fc='grey'
+            )
             self.obstacle_patches.append(reg_polygon)
-        self.obstacle_map = self._get_map(patch_list=self.obstacle_patches, radius=self.world_length/np.min(self.resolution)/2)
-        # Reset Evaders #
+        obs[self.num_evaders] = self._get_image(
+            patch_list=self.obstacle_patches, 
+            radius=self.world_length/np.min(self.resolution)/2
+        )
+        img_o = obs[self.num_evaders]
+        # Reset Evaders 
         for ie in range(self.num_evaders):
             self.evaders['position'][ie] = self.spawning_pool[ie]
             while any(
@@ -118,10 +139,16 @@ class PursuitEvasion:
         ## create evader patches, 八面玲珑
         self.evader_patches = []
         for ie in range(self.num_evaders):
-            octagon = RegularPolygon(xy=self.evaders['position'][ie], numVertices=8, radius=self.evader_radius, fc='orangered')
+            octagon = RegularPolygon(
+                xy=self.evaders['position'][ie], 
+                numVertices=8, 
+                radius=self.evader_radius, 
+                fc='orangered'
+            )
             self.evader_patches.append(octagon)
+            obs[ie] = self._get_image(patch_list=[octagon], radius=self.evader_radius) 
+            img_e += obs[ie]
         ## create evaders map
-        self.evader_map = self._get_map(patch_list=self.evader_patches, radius=self.evader_radius)
         # Reset Pursuers #
         for ip in range(self.num_pursuers):
             self.pursuers['position'][ip] = self.spawning_pool[self.num_evaders+ip]
@@ -139,16 +166,18 @@ class PursuitEvasion:
         ## create pursuer patches, 圆滑世故
         self.pursuer_patches = []
         for ip in range(self.num_pursuers):
-            circle = Circle(xy=self.pursuers['position'][ip], radius=self.pursuer_radius, fc='deepskyblue')
+            circle = Circle(
+                xy=self.pursuers['position'][ip], 
+                radius=self.pursuer_radius, 
+                fc='deepskyblue'
+            )
             self.pursuer_patches.append(circle)
-        ## create pursuers map
-        self.pursuer_map = self._get_map(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
-        # Create map in the order of RGB 
-        self.map[:,:,0] = 0.5*np.transpose(self.evader_map)
-        self.map[:,:,1] = 0.5*np.transpose(self.obstacle_map)
-        self.map[:,:,2] = 0.5*np.transpose(self.pursuer_map)
-        # Get obs
-        obs = self.map.copy()
+            obs[-self.num_pursuers+ip] = self._get_image(patch_list=[circle], radius=self.pursuer_radius) 
+            img_p += obs[-self.num_pursuers+ip]
+        # Create map image 
+        self.image[:,:,0] = .8*np.transpose(img_e) # R: evader channel
+        self.image[:,:,1] = .8*np.transpose(img_o) # G: obstacle channel
+        self.image[:,:,2] = .8*np.transpose(img_p) # B: pursuer channel
 
         return obs
 
@@ -202,7 +231,7 @@ class PursuitEvasion:
                 octagon = RegularPolygon(xy=self.evaders['position'][ie], numVertices=8, radius=self.evader_radius, fc='orangered')
                 self.evader_patches.append(octagon)
         ## create evader map
-        self.evader_map = self._get_map(patch_list=self.evader_patches, radius=self.evader_radius)
+        self.evader_map = self._get_image(patch_list=self.evader_patches, radius=self.evader_radius)
 
         # Step pursuers
         for ip in range(self.num_pursuers):
@@ -242,7 +271,7 @@ class PursuitEvasion:
                 circle = Circle(xy=self.pursuers['position'][ip], radius=self.pursuer_radius, fc='deepskyblue')
                 self.pursuer_patches.append(circle)
         ## create pursuer map
-        self.pursuer_map = self._get_map(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
+        self.pursuer_map = self._get_image(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
         # Combine maps in the order of RGB 
         self.map[:,:,0] = 0.5*np.transpose(self.evader_map) # R
         self.map[:,:,1] = 0.5*np.transpose(self.obstacle_map) # G
@@ -280,7 +309,7 @@ class PursuitEvasion:
             if self.evaders['status'][ie]=='active':
                 ### text annotation
                 self.ax.annotate(
-                    self.evaders['names'][ie], # pursuer name
+                    self.evaders['name'][ie], # pursuer name
                     (self.evaders['position'][ie,0], self.evaders['position'][ie,1]), # name label location
                     textcoords="offset points", # how to position the text
                     xytext=(0,10), # distance from text to points (x,y)
@@ -293,7 +322,7 @@ class PursuitEvasion:
             if self.pursuers['status'][ip]=='active':
                 # text annotation
                 self.ax.annotate(
-                    self.pursuers['names'][ip], # pursuer name
+                    self.pursuers['name'][ip], # pursuer name
                     (self.pursuers['position'][ip,0], self.pursuers['position'][ip,1]), # name label location
                     textcoords="offset points", # how to position the text
                     xytext=(0,10), # distance from text to points (x,y)
@@ -349,29 +378,36 @@ class PursuitEvasion:
 
         return int_flag
 
-    def _get_map(self, patch_list, radius):
+    def _get_image(self, patch_list, radius):
+        """
+        Create image on map according to patches in list
+        """
         patch_pix = np.array([False]*self.pix_coords.shape[0])
         for p in patch_list:
             patch_pix = np.logical_or(patch_pix, p.contains_points(self.pix_coords, radius=radius))
-        map = patch_pix.reshape(self.resolution)
+        image = patch_pix.reshape(self.resolution)
 
-        return map
+        return image
 
 
 if __name__ == '__main__':
     env=PursuitEvasion()
     for ep in range(10):
         obs = env.reset()
-        for st in range(env.max_episode_steps):
-            env.render(pause=1./2)
-            actions = np.random.uniform(-4,4,size=(env.num_evaders+env.num_pursuers,2))
-            obs, rew, done, info = env.step(actions)
-            img = obs[:,:,[2,1,0]]
-            cv2.imshow('map', cv2.resize(img, (360, 360)))
-            if cv2.waitKey(25) & 0xFF == ord('q'):
-                break
-            print("\nevaders_pos: {} \npursuers_pos: {} \nreward: {} \ndone: {}".format(env.evaders['position'], env.pursuers['position'], rew, done))
-            if info:
-                print(info)
-                break
+        cv2.imshow('map', cv2.resize(env.image[:,:,[2,1,0]], (720,720)))
+        if cv2.waitKey(25) & 0xFF == ord('q'):
+            break
+        env.render(pause=4)
+        # for st in range(env.max_episode_steps):
+        #     env.render(pause=1./env.rate)
+        #     actions = np.random.uniform(-4,4,size=(env.num_evaders+env.num_pursuers,2))
+        #     obs, rew, done, info = env.step(actions)
+        #     img = obs[:,:,[2,1,0]]
+        #     cv2.imshow('map', cv2.resize(img, (360, 360)))
+        #     if cv2.waitKey(25) & 0xFF == ord('q'):
+        #         break
+        #     print("\nevaders_pos: {} \npursuers_pos: {} \nreward: {} \ndone: {}".format(env.evaders['position'], env.pursuers['position'], rew, done))
+        #     if info:
+        #         print(info)
+        #         break
     cv2.destroyAllWindows()
