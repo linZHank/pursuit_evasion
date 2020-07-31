@@ -193,37 +193,6 @@ class SoftActorCritic(tf.keras.Model):
 
         return loss_q, loss_pi
     
-class ReplayBuffer:
-    """
-    A simple FIFO experience replay buffer for SAC agents.
-    """
-
-    def __init__(self, dim_obs, dim_act, size):
-        self.obs_buf = np.zeros((size, dim_obs), dtype=np.float32)
-        self.nobs_buf = np.zeros((size, dim_obs), dtype=np.float32)
-        self.act_buf = np.zeros((size, dim_act), dtype=np.float32)
-        self.rew_buf = np.zeros(size, dtype=np.float32)
-        self.done_buf = np.zeros(size, dtype=np.float32)
-        self.ptr, self.size, self.max_size = 0, 0, size
-
-    def store(self, obs, act, rew, done, nobs):
-        self.obs_buf[self.ptr] = obs
-        self.nobs_buf[self.ptr] = nobs
-        self.act_buf[self.ptr] = act
-        self.rew_buf[self.ptr] = rew
-        self.done_buf[self.ptr] = done
-        self.ptr = (self.ptr+1) % self.max_size
-        self.size = min(self.size+1, self.max_size)
-
-    def sample_batch(self, batch_size=32):
-        idxs = np.random.randint(0, self.size, size=batch_size)
-        batch = dict(obs=tf.convert_to_tensor(self.obs_buf[idxs]),
-                     nobs=tf.convert_to_tensor(self.nobs_buf[idxs]),
-                     act=tf.convert_to_tensor(self.act_buf[idxs]),
-                     rew=tf.convert_to_tensor(self.rew_buf[idxs]),
-                     done=tf.convert_to_tensor(self.done_buf[idxs]))
-        return batch
-
 # Test agent
 if __name__=='__main__':
     agent = SoftActorCritic(dim_obs=(80,80,3), dim_act=2)
