@@ -28,7 +28,7 @@ class PursuitEvasion:
         self.max_episode_steps = 1000
         self.resolution = resolution
         self.world_length = 10
-        self.damping = 0.1
+        self.damping = 0.2
         self.max_num_evaders = 4
         self.max_num_pursuers = 4
         self.num_evaders = random.randint(1,self.max_num_evaders+1)
