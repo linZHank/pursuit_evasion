@@ -38,38 +38,16 @@ logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
 ################################################################
 
 
-def convnet(dim_inputs, dim_outputs, activation, output_activation=None):
-    # inputs
-    img_inputs = tf.keras.Input(shape=dim_inputs, name='img_inputs')
-    # image features
-    img_feature = tf.keras.layers.Conv2D(32,(3,3), padding='same', activation=activation)(img_inputs)
-    img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-    img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-    img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-    img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-    img_feature = tf.keras.layers.Flatten()(img_feature)
-    img_feature = tf.keras.layers.Dense(128, activation=activation)(img_feature)
-    img_feature = tf.keras.layers.Dense(128, activation=activation)(img_feature)
-    # outputs
-    outputs = tf.keras.layers.Dense(dim_outputs, activation=output_activation)(img_feature)
-
-    return tf.keras.Model(inputs=img_inputs, outputs=outputs)
-
 class Actor(tf.keras.Model):
-    def __init__(self, dim_obs, dim_act, activation, act_limit, **kwargs):
+    def __init__(self, dim_obs, dim_act, hidden_sizes, activation, act_limit, **kwargs):
         super(Actor, self).__init__(name='actor', **kwargs)
-        img_inputs = tf.keras.Input(shape=dim_obs, name='img_inputs')
-        img_feature = tf.keras.layers.Conv2D(32,(3,3), padding='same', activation=activation)(img_inputs)
-        img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-        img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-        img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-        img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-        img_feature = tf.keras.layers.Flatten()(img_feature)
-        img_feature = tf.keras.layers.Dense(64, activation=activation)(img_feature)
-        img_feature = tf.keras.layers.Dense(64, activation=activation)(img_feature)
-        mu_outputs = tf.keras.layers.Dense(dim_act)(img_feature) 
-        log_std_outputs = tf.keras.layers.Dense(dim_act)(img_feature) 
-        self.policy_net = tf.keras.Model(inputs=img_inputs, outputs=[mu_outputs, log_std_outputs])
+        inputs = tf.keras.Input(shape=(dim_obs,))
+        x = tf.keras.layers.Dense(hidden_sizes[0], activation=activation)(inputs)
+        for i in range(1, len(hidden_sizes)):
+            x = tf.keras.layers.Dense(hidden_sizes[i], activation=activation)(x)
+        mu_outputs = tf.keras.layers.Dense(dim_act)(x) 
+        log_std_outputs = tf.keras.layers.Dense(dim_act)(x) 
+        self.policy_net = tf.keras.Model(inputs=inputs, outputs=[mu_outputs, log_std_outputs])
         self.act_limit = act_limit
 
     def call(self, obs, deterministic=False, with_logprob=True):
@@ -94,30 +72,22 @@ class Actor(tf.keras.Model):
         return action, logp_pi
         
 class Critic(tf.keras.Model):
-    def __init__(self, dim_obs, dim_act, activation, **kwargs):
+    def __init__(self, dim_obs, dim_act, hidden_sizes, activation, **kwargs):
         super(Critic, self).__init__(name='critic', **kwargs)
-        img_inputs = tf.keras.Input(shape=dim_obs, name='img_inputs')
-        act_inputs = tf.keras.Input(shape=dim_act, name='act_inputs')
-        img_feature = tf.keras.layers.Conv2D(32,(3,3), padding='same', activation=activation)(img_inputs)
-        img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-        img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-        img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-        img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-        img_feature = tf.keras.layers.Flatten()(img_feature)
-        img_feature = tf.keras.layers.Dense(64, activation=activation)(img_feature)
-        img_feature = tf.keras.layers.Dense(64, activation=activation)(img_feature)
-        combo_feature = tf.keras.layers.concatenate([img_feature, act_inputs])
-        outputs = tf.keras.layers.Dense(1)(combo_feature)
-        self.q_net = tf.keras.Model(inputs=[img_inputs,act_inputs], outputs=outputs)
+        inputs = tf.keras.Input(shape=(dim_obs+dim_act,))
+        x = tf.keras.layers.Dense(hidden_sizes[0], activation=activation)(inputs)
+        for i in range(1, len(hidden_sizes)):
+            x = tf.keras.layers.Dense(hidden_sizes[i], activation=activation)(x)
+        outputs = tf.keras.layers.Dense(1)(x)
+        self.q_net = tf.keras.Model(inputs=inputs, outputs=outputs)
         
     def call(self, obs, act):
-        qval = self.q_net([obs, act])
+        qval = self.q_net(tf.concat([obs, act], axis=-1))
         return tf.squeeze(qval, axis=-1)
 
 class SoftActorCritic(tf.keras.Model):
 
-    def __init__(self, dim_obs, dim_act, act_limit=1, activation='relu', gamma = 0.99, auto_ent=False,
-                 alpha=0.2, critic_lr=3e-4, actor_lr=3e-4, alpha_lr=3e-4, polyak=0.995, **kwargs):
+    def __init__(self, dim_obs, dim_act, hidden_sizes=(256,256), act_limit=1, activation='relu', gamma = 0.99, auto_ent=False, alpha=0.2, critic_lr=3e-4, actor_lr=3e-4, alpha_lr=3e-4, polyak=0.995, **kwargs):
         super(SoftActorCritic, self).__init__(name='sac', **kwargs)
         # params
         self.auto_ent = auto_ent
@@ -126,11 +96,11 @@ class SoftActorCritic(tf.keras.Model):
         self.gamma = gamma # discount rate
         self.polyak = polyak
         # models
-        self.pi = Actor(dim_obs, dim_act, activation, act_limit)
-        self.q0 = Critic(dim_obs, dim_act, activation) 
-        self.q1 = Critic(dim_obs, dim_act, activation) 
-        self.targ_q0 = Critic(dim_obs, dim_act, activation)
-        self.targ_q1 = Critic(dim_obs, dim_act, activation)
+        self.pi = Actor(dim_obs, dim_act, hidden_sizes, activation, act_limit)
+        self.q0 = Critic(dim_obs, dim_act, hidden_sizes, activation) 
+        self.q1 = Critic(dim_obs, dim_act, hidden_sizes, activation) 
+        self.targ_q0 = Critic(dim_obs, dim_act, hidden_sizes, activation)
+        self.targ_q1 = Critic(dim_obs, dim_act, hidden_sizes, activation)
         self.critic_optimizer = tf.keras.optimizers.Adam(lr=critic_lr)
         self.actor_optimizer = tf.keras.optimizers.Adam(lr=actor_lr)
         self.alpha_optimizer = tf.keras.optimizers.Adam(lr=alpha_lr)
@@ -195,16 +165,16 @@ class SoftActorCritic(tf.keras.Model):
     
 # Test agent
 if __name__=='__main__':
-    agent = SoftActorCritic(dim_obs=(80,80,3), dim_act=2)
+    agent = SoftActorCritic(dim_obs=8, dim_act=2)
     # test dataset
-    img = np.random.rand(32,80,80,3).astype(np.float32)
-    nimg = np.random.rand(32,80,80,3).astype(np.float32)
-    act = np.random.randn(32,2).astype(np.float32)
-    rew = np.random.randn(32).astype(np.float32)
-    done = 1.*np.random.choice([False, True], size=32)
+    obs = np.random.rand(128,8).astype(np.float32)
+    nobs = np.random.rand(128,8).astype(np.float32)
+    act = np.random.randn(128,2).astype(np.float32)
+    rew = np.random.randn(128).astype(np.float32)
+    done = 1.*np.random.choice([False, True], size=128)
     data = dict(
-        obs = tf.convert_to_tensor(img, dtype=tf.float32),
-        nobs = tf.convert_to_tensor(nimg, dtype=tf.float32),
+        obs = tf.convert_to_tensor(obs, dtype=tf.float32),
+        nobs = tf.convert_to_tensor(nobs, dtype=tf.float32),
         act = tf.convert_to_tensor(act, dtype=tf.float32),
         rew = tf.convert_to_tensor(rew, dtype=tf.float32),
         done = tf.convert_to_tensor(done, dtype=tf.float32)

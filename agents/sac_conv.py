@@ -120,8 +120,10 @@ class SoftActorCritic(tf.keras.Model):
 
     def __init__(self, dim_obs, dim_act, act_limit=2, activation='relu', gamma = 0.99, auto_ent=True,
                  alpha=0.2, critic_lr=1e-4, actor_lr=1e-4, alpha_lr=3e-4, polyak=0.995, **kwargs):
-        super(SoftActorCritic, self).__init__(name='sac', **kwargs)
+        super(SoftActorCritic, self).__init__(name='sac_conv', **kwargs)
         # params
+        self.dim_obs = dim_obs
+        self.dim_act = dim_act
         self.auto_ent = auto_ent
         self.target_ent = -np.prod(dim_act) # heuristic
         self.alpha = alpha # entropy temperature

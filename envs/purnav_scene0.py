@@ -1,9 +1,11 @@
 #!/usr/bin/python3
 """
-Pursuer Navigation Environment: a toy environment for testing RL algorithms with continuous action space. 
+Pursuer Navigation Environment: a toy environment for testing algorithms. 
     - Fixed obstacles (1 circle, 2 rectangles)
     - 1 Pursuer (controllable)
     - 1 Evader (still)
+    - observation space: 3-channel image
+    - action space: 2-dim array, continuous
 """
 import numpy as np
 import cv2
