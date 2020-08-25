@@ -43,10 +43,8 @@ def convnet(dim_inputs, dim_outputs, activation, output_activation=None):
     img_inputs = tf.keras.Input(shape=dim_inputs, name='img_inputs')
     # image features
     img_feature = tf.keras.layers.Conv2D(32,(3,3), padding='same', activation=activation)(img_inputs)
-    img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-    img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-    img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-    img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
+    img_feature = tf.keras.layers.Conv2D(32, (3,3), padding='same', activation=activation)(img_feature)
+    img_feature = tf.keras.layers.Conv2D(32, (3,3), padding='same', activation=activation)(img_feature)
     img_feature = tf.keras.layers.Flatten()(img_feature)
     img_feature = tf.keras.layers.Dense(128, activation=activation)(img_feature)
     img_feature = tf.keras.layers.Dense(128, activation=activation)(img_feature)
@@ -61,15 +59,13 @@ class Actor(tf.keras.Model):
         # model construction
         img_inputs = tf.keras.Input(shape=dim_obs, name='img_inputs')
         img_feature = tf.keras.layers.Conv2D(32,(3,3), padding='same', activation=activation)(img_inputs)
-        img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-        img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-        img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-        img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
+        img_feature = tf.keras.layers.Conv2D(32, (3,3), padding='same', activation=activation)(img_feature)
+        img_feature = tf.keras.layers.Conv2D(32, (3,3), padding='same', activation=activation)(img_feature)
         img_feature = tf.keras.layers.Flatten()(img_feature)
-        img_feature = tf.keras.layers.Dense(512, activation=activation)(img_feature)
-        img_feature = tf.keras.layers.Dense(512, activation=activation)(img_feature)
-        mu_outputs = tf.keras.layers.Dense(dim_act)(img_feature) 
-        log_std_outputs = tf.keras.layers.Dense(dim_act)(img_feature) 
+        img_feature = tf.keras.layers.Dense(256, activation=activation)(img_feature)
+        img_feature = tf.keras.layers.Dense(128, activation=activation)(img_feature)
+        mu_outputs = tf.keras.layers.Dense(dim_act[0])(img_feature) 
+        log_std_outputs = tf.keras.layers.Dense(dim_act[0])(img_feature) 
         # instantiate model
         self.policy_net = tf.keras.Model(inputs=img_inputs, outputs=[mu_outputs, log_std_outputs])
         self.act_limit = act_limit
@@ -101,15 +97,13 @@ class Critic(tf.keras.Model):
         img_inputs = tf.keras.Input(shape=dim_obs, name='img_inputs')
         act_inputs = tf.keras.Input(shape=dim_act, name='act_inputs')
         img_feature = tf.keras.layers.Conv2D(32,(3,3), padding='same', activation=activation)(img_inputs)
-        img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-        img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
-        img_feature = tf.keras.layers.MaxPool2D((2,2))(img_feature)
-        img_feature = tf.keras.layers.Conv2D(64, (3,3), padding='same', activation=activation)(img_feature)
+        img_feature = tf.keras.layers.Conv2D(32, (3,3), padding='same', activation=activation)(img_feature)
+        img_feature = tf.keras.layers.Conv2D(32, (3,3), padding='same', activation=activation)(img_feature)
         img_feature = tf.keras.layers.Flatten()(img_feature)
+        img_feature = tf.keras.layers.Dense(256, activation=activation)(img_feature)
+        img_feature = tf.keras.layers.Dense(128, activation=activation)(img_feature)
         concat_feature = tf.keras.layers.concatenate([img_feature, act_inputs])
-        combo_feature = tf.keras.layers.Dense(256, activation=activation)(concat_feature)
-        combo_feature = tf.keras.layers.Dense(256, activation=activation)(combo_feature)
-        outputs = tf.keras.layers.Dense(1)(combo_feature)
+        outputs = tf.keras.layers.Dense(1)(concat_feature)
         self.q_net = tf.keras.Model(inputs=[img_inputs,act_inputs], outputs=outputs)
         
     def call(self, obs, act):
@@ -118,8 +112,8 @@ class Critic(tf.keras.Model):
 
 class SoftActorCritic(tf.keras.Model):
 
-    def __init__(self, dim_obs, dim_act, act_limit=2, activation='relu', gamma = 0.99, auto_ent=True,
-                 alpha=0.2, critic_lr=1e-4, actor_lr=1e-4, alpha_lr=3e-4, polyak=0.995, **kwargs):
+    def __init__(self, dim_obs, dim_act, act_limit, activation='relu', gamma = 0.99, auto_ent=True,
+                 alpha=0.2, critic_lr=1e-4, actor_lr=1e-4, alpha_lr=1e-4, polyak=0.995, **kwargs):
         super(SoftActorCritic, self).__init__(name='sac_conv', **kwargs)
         # params
         self.dim_obs = dim_obs
@@ -199,19 +193,19 @@ class SoftActorCritic(tf.keras.Model):
     
 # Test agent
 if __name__=='__main__':
-    agent = SoftActorCritic(dim_obs=(100,100,4), dim_act=2)
+    agent = SoftActorCritic(dim_obs=(100,100,1), dim_act=(2,), act_limit=2)
     # test dataset
-    img = np.random.rand(128,100,100,4).astype(np.float32)
-    nimg = np.random.rand(128,100,100,4).astype(np.float32)
-    act = np.random.randn(128,2).astype(np.float32)
-    rew = np.random.randn(128).astype(np.float32)
-    done = 1.*np.random.choice([False, True], size=128)
+    img = np.random.randint(0, 255, (8,100,100,1), dtype=np.uint8)
+    nimg = np.random.randint(0, 255, (8,100,100,1), dtype=np.uint8)
+    act = np.random.randn(8,2).astype(np.float32)
+    rew = np.random.randn(8).astype(np.float32)
+    done = 1.*np.random.choice([False, True], size=8)
     data = dict(
-        obs = tf.convert_to_tensor(img, dtype=tf.float32),
-        nobs = tf.convert_to_tensor(nimg, dtype=tf.float32),
+        obs = tf.convert_to_tensor(img/255., dtype=tf.float32),
+        nobs = tf.convert_to_tensor(nimg/255., dtype=tf.float32),
         act = tf.convert_to_tensor(act, dtype=tf.float32),
         rew = tf.convert_to_tensor(rew, dtype=tf.float32),
         done = tf.convert_to_tensor(done, dtype=tf.float32)
     )
-    loss_q, loss_pi = agent.train_one_batch(data)
-    print("loss_q: {}, loss_pi: {}".format(loss_q, loss_pi))
+    # loss_q, loss_pi = agent.train_one_batch(data)
+    # print("loss_q: {}, loss_pi: {}".format(loss_q, loss_pi))

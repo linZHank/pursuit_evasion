@@ -27,6 +27,10 @@ class PursuerNavigationScene0(PursuitEvasion):
         self.num_pursuers = 1
         self.num_circles = 1
         self.num_rectangles = 2
+        self.observation_space_shape = list(resolution) + [3]
+        self.action_space_shape = (2,)
+        self.action_space_high = 2.*np.ones(self.action_space_shape)
+        self.action_space_low = -self.action_space_high
 
     def reset(self):
         """
@@ -53,10 +57,10 @@ class PursuerNavigationScene0(PursuitEvasion):
             status = ['deactivated'],
         )
         self.spawning_pool = random.uniform(
-            -self.world_length/2+.2, self.world_length/2-.2,
+            -self.world_length/2+.5, self.world_length/2-.5,
             size=(2,2)
-        ) # .2 threshold to avoid spawning too close to the walls
-        obs = np.zeros((self.resolution[0], self.resolution[1], 3))
+        ) # .5 threshold to avoid spawning too close to the walls
+        obs = np.zeros((self.resolution[0], self.resolution[1], 3), dtype=np.uint8)
 
         # Reset obstacles: you can add more shapes in the section below
         self.obstacle_patches = []
@@ -80,11 +84,9 @@ class PursuerNavigationScene0(PursuitEvasion):
             fc='grey'
         )
         self.obstacle_patches.append(south_box)
-        obs[:,:,1] = .9*np.transpose(
-            self._get_image(
-                patch_list=self.obstacle_patches, 
-                radius=self.world_length/np.min(self.resolution)/2
-            )
+        obs[:,:,1] = 255*self._get_image(
+            patch_list=self.obstacle_patches, 
+            radius=self.world_length/np.min(self.resolution)/2
         )
 
         # Reset Evaders 
@@ -109,7 +111,10 @@ class PursuerNavigationScene0(PursuitEvasion):
             fc='orangered'
         )
         self.evader_patches.append(octagon)
-        obs[:,:,0] = .9*np.transpose(self._get_image(patch_list=[octagon], radius=self.evader_radius))
+        obs[:,:,0] = 255*self._get_image(
+            patch_list=[octagon], 
+            radius=self.evader_radius
+        )
 
         # Reset Pursuers
         self.pursuers['position'][0] = self.spawning_pool[-1]
@@ -132,7 +137,10 @@ class PursuerNavigationScene0(PursuitEvasion):
             fc='deepskyblue'
         )
         self.pursuer_patches.append(circle)
-        obs[:,:,-1] = .9*np.transpose(self._get_image(patch_list=[circle], radius=self.pursuer_radius))
+        obs[:,:,-1] = 255*self._get_image(
+            patch_list=[circle], 
+            radius=self.pursuer_radius
+        )
         # Create map image 
         self.image[:,:,0] = obs[:,:,0] # .9*np.transpose(obs[:,:,0]) # R: evader channel
         self.image[:,:,1] = obs[:,:,1] # .9*np.transpose(obs[:,:,1]) # G: obstacle channel
@@ -159,7 +167,7 @@ class PursuerNavigationScene0(PursuitEvasion):
         reward = 0
         done = False
         info = ''
-        obs = np.zeros((self.resolution[0], self.resolution[1], 3))
+        obs = np.zeros((self.resolution[0], self.resolution[1], 3), dtype=np.uint8)
         obs[:,:,1] = self.image[:,:,1]
         # Step evaders
         obs[:,:,0] = self.image[:,:,0]
@@ -177,9 +185,9 @@ class PursuerNavigationScene0(PursuitEvasion):
                 ]
             ):
                 self.pursuers['status'][0] = 'deactivated'
-                bonus = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                bonus = -.1
             else:
-                bonus = -np.linalg.norm(action)/10.
+                bonus = -.1
         else:
             action = np.zeros(2)
             self.pursuers['velocity'][0] = np.zeros(2)
@@ -188,7 +196,7 @@ class PursuerNavigationScene0(PursuitEvasion):
             if self.evaders['status'][0] =='active':
                 if np.linalg.norm(self.pursuers['position'][0] - self.evaders['position'][0]) <= self.interfere_radius:
                     self.evaders['status'][0] = 'deactivated'
-                    bonus = np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                    bonus = 100
         ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故
@@ -200,11 +208,9 @@ class PursuerNavigationScene0(PursuitEvasion):
                 fc='deepskyblue'
             )
             self.pursuer_patches.append(circle)
-            obs[:,:,-1] = 0.9*np.transpose(
-                self._get_image(
-                    patch_list=[circle], 
-                    radius=self.pursuer_radius
-                )
+            obs[:,:,-1] = 255*self._get_image(
+                patch_list=[circle], 
+                radius=self.pursuer_radius
             )
         # Create map image, obstacle channel no need to change 
         self.image[:,:,2] = obs[:,:,2] # B: pursuer channel

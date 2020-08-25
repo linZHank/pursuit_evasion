@@ -5,6 +5,10 @@ if __name__ == '__main__':
     env=PursuerNavigationScene0()
     for ep in range(10):
         obs = env.reset()
+        # cv2.imshow('map', cv2.resize(obs[:,:,[2,1,0]], (640, 640)))
+        # if cv2.waitKey(25) & 0xFF == ord('q'):
+        #     break
+        # env.render(pause=2)
         for st in range(env.max_episode_steps):
             cv2.imshow('map', cv2.resize(obs[:,:,[2,1,0]], (640, 640)))
             if cv2.waitKey(25) & 0xFF == ord('q'):

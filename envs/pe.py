@@ -23,8 +23,8 @@ class PursuitEvasion:
     """
     def __init__(self, resolution=(80, 80)):
         # Env specs #
-        self.name='npne' # dynamic multi-pursuer multi-evader
-        self.rate = 20 # Hz
+        self.name='pursuit-evasion' # dynamic multi-pursuer multi-evader
+        self.rate = 15 # Hz
         self.max_episode_steps = 1000
         self.resolution = resolution
         self.world_length = 10
@@ -93,10 +93,10 @@ class PursuitEvasion:
             -self.world_length/2+.2, self.world_length/2-.2,
             size=(self.num_evaders+self.num_pursuers,2)
         ) # .2 threshold to avoid spawning too close to the walls
-        img_e = np.zeros((self.resolution[0], self.resolution[1]))
-        img_o = np.zeros((self.resolution[0], self.resolution[1]))
-        img_p = np.zeros((self.resolution[0], self.resolution[1]))
-        obs = np.zeros((self.num_evaders+self.num_pursuers+1, self.resolution[0], self.resolution[1]))
+        img_e = np.zeros((self.resolution[0], self.resolution[1]), dtype=np.uint8)
+        img_o = np.zeros((self.resolution[0], self.resolution[1]), dtype=np.uint8)
+        img_p = np.zeros((self.resolution[0], self.resolution[1]), dtype=np.uint8)
+        obs = np.zeros((self.num_evaders+self.num_pursuers+1, self.resolution[0], self.resolution[1]), dtype=np.uint8)
         # Reset obstacles: you can add more shapes in the section below
         self.obstacle_patches = []
         for _ in range(self.num_ellipses):
@@ -117,7 +117,7 @@ class PursuitEvasion:
                 fc='grey'
             )
             self.obstacle_patches.append(reg_polygon)
-        obs[self.num_evaders] = self._get_image(
+        obs[self.num_evaders] = 255*self._get_image(
             patch_list=self.obstacle_patches, 
             radius=self.world_length/np.min(self.resolution)/2
         )
@@ -146,7 +146,7 @@ class PursuitEvasion:
                 fc='orangered'
             )
             self.evader_patches.append(octagon)
-            obs[ie] = self._get_image(patch_list=[octagon], radius=self.evader_radius) 
+            obs[ie] = 255*self._get_image(patch_list=[octagon], radius=self.evader_radius) 
             img_e += obs[ie]
         ## create evaders map
         # Reset Pursuers #
@@ -172,12 +172,12 @@ class PursuitEvasion:
                 fc='deepskyblue'
             )
             self.pursuer_patches.append(circle)
-            obs[-self.num_pursuers+ip] = self._get_image(patch_list=[circle], radius=self.pursuer_radius) 
+            obs[-self.num_pursuers+ip] = 255*self._get_image(patch_list=[circle], radius=self.pursuer_radius) 
             img_p += obs[-self.num_pursuers+ip]
         # Create map image 
-        self.image[:,:,0] = .8*np.transpose(img_e) # R: evader channel
-        self.image[:,:,1] = .8*np.transpose(img_o) # G: obstacle channel
-        self.image[:,:,2] = .8*np.transpose(img_p) # B: pursuer channel
+        self.image[:,:,0] = img_e # R: evader channel
+        self.image[:,:,1] = img_o # G: obstacle channel
+        self.image[:,:,2] = img_p # B: pursuer channel
 
         return obs
 
@@ -200,9 +200,9 @@ class PursuitEvasion:
         reward = np.zeros(self.num_evaders + self.num_pursuers)
         done = np.array([False]*(self.num_evaders + self.num_pursuers))
         info = ''
-        img_e = np.zeros((self.resolution[0], self.resolution[1]))
-        img_p = np.zeros((self.resolution[0], self.resolution[1]))
-        obs = np.zeros((self.num_evaders+self.num_pursuers+1, self.resolution[0], self.resolution[1]))
+        img_e = np.zeros((self.resolution[0], self.resolution[1]), dtype=np.uint8)
+        img_p = np.zeros((self.resolution[0], self.resolution[1]), dtype=np.uint8)
+        obs = np.zeros((self.num_evaders+self.num_pursuers+1, self.resolution[0], self.resolution[1]), dtype=np.uint8)
         obs[self.num_evaders] = self.image[:,:,1]
         # Step evaders
         for ie in range(self.num_evaders):
@@ -219,9 +219,9 @@ class PursuitEvasion:
                     ]
                 ):
                     self.evaders['status'][ie] = 'deactivated'
-                    bonus[ie] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                    bonus[ie] = -100 # -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
                 else:
-                    bonus[ie] = -np.linalg.norm(actions[ie])/10.
+                    bonus[ie] = 0 # -np.linalg.norm(actions[ie])/10.
             else:
                 actions[ie] = np.zeros(2)
                 self.evaders['velocity'][ie] = np.zeros(2)
@@ -238,7 +238,7 @@ class PursuitEvasion:
                     fc='orangered'
                 )
                 self.evader_patches.append(octagon)
-                obs[ie] = self._get_image(patch_list=[octagon], radius=self.evader_radius) 
+                obs[ie] = 255*self._get_image(patch_list=[octagon], radius=self.evader_radius) 
                 img_e += obs[ie]
 
         # Step pursuers
@@ -256,9 +256,9 @@ class PursuitEvasion:
                     ]
                 ):
                     self.pursuers['status'][ip] = 'deactivated'
-                    bonus[-self.num_pursuers+ip] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                    bonus[-self.num_pursuers+ip] = -100 # -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
                 else:
-                    bonus[-self.num_pursuers+ip] = -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
+                    bonus[-self.num_pursuers+ip] = 0 # -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
             else:
                 actions[-self.num_pursuers+ip] = np.zeros(2)
                 self.pursuers['velocity'][ip] = np.zeros(2)
@@ -268,8 +268,8 @@ class PursuitEvasion:
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
                             self.evaders['status'][ie] = 'deactivated'
-                            bonus[ie] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
-                            bonus[-self.num_pursuers+ip] = np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                            bonus[ie] = -100 # -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                            bonus[-self.num_pursuers+ip] = 100 # np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
         ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故
@@ -282,11 +282,11 @@ class PursuitEvasion:
                     fc='deepskyblue'
                 )
                 self.pursuer_patches.append(circle)
-                obs[-self.num_pursuers+ip] = self._get_image(patch_list=[circle], radius=self.pursuer_radius) 
+                obs[-self.num_pursuers+ip] = 255*self._get_image(patch_list=[circle], radius=self.pursuer_radius) 
                 img_p += obs[-self.num_pursuers+ip]
         # Create map image, obstacle channel no need to change 
-        self.image[:,:,0] = .8*np.transpose(img_e) # R: evader channel
-        self.image[:,:,2] = .8*np.transpose(img_p) # B: pursuer channel
+        self.image[:,:,0] = img_e # R: evader channel
+        self.image[:,:,2] = img_p # B: pursuer channel
         # Finish step
         self.step_counter += 1
         ## reward
@@ -396,7 +396,7 @@ class PursuitEvasion:
             patch_pix = np.logical_or(patch_pix, p.contains_points(self.pix_coords, radius=radius))
         image = patch_pix.reshape(self.resolution)
 
-        return image
+        return np.transpose(image)
 
 
 if __name__ == '__main__':
