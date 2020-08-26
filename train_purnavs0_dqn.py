@@ -10,15 +10,15 @@ from datetime import datetime
 import logging
 logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
 
-from envs.purnav_scene0_discrete import PursuerNavigationScene0Discrete
+from envs.purnavs0 import PursuerNavigationScene0
 from agents.dqn import ReplayBuffer, DeepQNet
 
 
 if __name__=='__main__':
-    env = PursuerNavigationScene0Discrete() # default resolution:(80,80)
+    env = PursuerNavigationScene0() # default resolution:(80,80)
     agent = DeepQNet(
         dim_obs=[8], 
-        num_act=env.action_options.shape[0], 
+        num_act=env.action_reservoir.shape[0], 
         lr=3e-4
     ) 
     model_dir = os.path.join(sys.path[0], 'saved_models', env.name, agent.name)
@@ -27,8 +27,8 @@ if __name__=='__main__':
     batch_size = 128
     update_freq = 100
     update_after = 10000
-    warmup_episodes = 200
-    decay_period = 1000
+    warmup_episodes = 500
+    decay_period = 2000
     replay_buffer = ReplayBuffer(dim_obs=agent.dim_obs, size=int(1e6)) 
     total_steps = int(5e6)
     episodic_returns = []

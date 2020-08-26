@@ -15,7 +15,7 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, RegularPolygon
 from matplotlib.collections import PatchCollection
-from pe import PursuitEvasion
+from .pe import PursuitEvasion
 
 
 class PursuerNavigationScene0(PursuitEvasion):
@@ -156,10 +156,10 @@ class PursuerNavigationScene0(PursuitEvasion):
         """
         Agents take velocity command
         Args:
-            action: array([fx_p0,fy_p0])
+            action_index: int
         Returns:
             obs: map image
-            reward: r_p0
+            reward
             done
             info: episode result or ''
         """
