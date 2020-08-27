@@ -34,16 +34,16 @@ class PursuerNavigationScene0(PursuitEvasion):
             [0.,-1.],
             [-1.,0.],
             [1.,0.]
-        ])
+        ]) # 0: Up, 1: Down, 2: Left, 3: Right
         
     def reset(self):
+
         """
         Reset obstacles and agents location
         Args:
         Return:
             obs: map image
         """
-
         # Prepare 
         self.step_counter = 0
         self.evaders = dict(
@@ -194,7 +194,7 @@ class PursuerNavigationScene0(PursuitEvasion):
                 bonus = -100.
             else:
                 distance = np.linalg.norm(self.pursuers['position'] - self.evaders['position'])
-                bonus = 10*(prev_distance - distance)
+                bonus = 10*(prev_distance - distance) - .1
         else:
             action = np.zeros(2)
             self.pursuers['velocity'][0] = np.zeros(2)

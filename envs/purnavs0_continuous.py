@@ -68,7 +68,7 @@ class PursuerNavigationScene0Continuous(PursuerNavigationScene0):
                 bonus = -100.
             else:
                 distance = np.linalg.norm(self.pursuers['position'] - self.evaders['position'])
-                bonus = 10*(prev_distance - distance)
+                bonus = 10*(prev_distance - distance) - .1
         else:
             action = np.zeros(2)
             self.pursuers['velocity'][0] = np.zeros(2)

@@ -8,7 +8,7 @@ import time
 import matplotlib.pyplot as plt
 from datetime import datetime
 import logging
-logging.basicConfig(format='%(asctime)s %(message)s',level=logging.INFO)
+logging.basicConfig(format='%(asctime)s %(message)s',level=logging.DEBUG)
 
 from envs.purnavs0 import PursuerNavigationScene0
 from agents.dqn import ReplayBuffer, DeepQNet
@@ -17,7 +17,7 @@ from agents.dqn import ReplayBuffer, DeepQNet
 if __name__=='__main__':
     env = PursuerNavigationScene0() # default resolution:(80,80)
     agent = DeepQNet(
-        dim_obs=[8], 
+        dim_obs=[6], 
         num_act=env.action_reservoir.shape[0], 
         lr=3e-4
     ) 
@@ -43,16 +43,14 @@ if __name__=='__main__':
     for t in range(total_steps):
         # env.render()
         state = np.array([
-            env.evaders['position'][0],
-            env.evaders['velocity'][0],
+            env.evaders['position'][0] - env.pursuers['position'][0],
             env.pursuers['position'][0],
             env.pursuers['velocity'][0],
         ]).reshape(-1)
         act = np.squeeze(agent.act(np.expand_dims(state, axis=0)))
         n_obs, rew, done, info = env.step(int(act))
         n_state = np.array([
-            env.evaders['position'][0],
-            env.evaders['velocity'][0],
+            env.evaders['position'][0] - env.pursuers['position'][0],
             env.pursuers['position'][0],
             env.pursuers['velocity'][0],
         ]).reshape(-1)
@@ -101,34 +99,6 @@ if __name__=='__main__':
     model_path = os.path.join(model_dir, str(episode_counter))
     agent.q.q_net.save(model_path)
 
-    # Test
-    input("Press ENTER to test agent...")
-    for ep in range(10):
-        o, d, ep_ret = env.reset(), False, 0
-        for st in range(env.max_episode_steps):
-            cv2.imshow('map', cv2.resize(obs[:,:,[2,1,0]], (640, 640)))
-            if cv2.waitKey(25) & 0xFF == ord('q'):
-                break
-            env.render(pause=1./env.rate)
-            s = np.array([
-                env.evaders['position'][0],
-                env.evaders['velocity'][0],
-                env.pursuers['position'][0],
-                env.pursuers['velocity'][0],
-            ]).reshape(-1)
-            a = np.squeeze(agent.act(np.expand_dims(s, axis=0)))
-            o2,r,d,_ = env.step(int(a))
-            s2 = np.array([
-                env.evaders['position'][0],
-                env.evaders['velocity'][0],
-                env.pursuers['position'][0],
-                env.pursuers['velocity'][0],
-            ]).reshape(-1)
-            ep_ret += r
-            s = s2.copy()
-            if d:
-                print("EpReturn: {}".format(ep_ret))
-                break 
     # plot returns
     fig, ax = plt.subplots(figsize=(8, 6))
     fig.suptitle('Averaged Returns')
