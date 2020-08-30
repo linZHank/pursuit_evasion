@@ -27,10 +27,10 @@ if __name__=='__main__':
     batch_size = 128
     update_freq = 100
     update_after = 10000
-    warmup_episodes = 500
-    decay_period = 2000
+    warmup_episodes = 1000
+    decay_period = 4000
     replay_buffer = ReplayBuffer(dim_obs=agent.dim_obs, size=int(1e6)) 
-    total_steps = int(5e6)
+    total_steps = int(1e7)
     episodic_returns = []
     sedimentary_returns = []
     episodic_steps = []

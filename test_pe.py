@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from pe import PursuitEvasion
+from envs.pe import PursuitEvasion
 if __name__ == '__main__':
     env=PursuitEvasion()
     for ep in range(10):

@@ -58,6 +58,7 @@ class PursuerNavigationScene0Continuous(PursuerNavigationScene0):
             self.pursuers['velocity'][0] = np.clip(self.pursuers['velocity'][0], -self.pursuer_max_speed, self.pursuer_max_speed)
             d_pos = self.pursuers['velocity'][0]/self.rate
             self.pursuers['position'][0] += d_pos # possible next pos
+            ## detect collision
             if any(
                 [
                     self._is_outbound(self.pursuers['position'][0], radius=self.pursuer_radius),
@@ -65,10 +66,8 @@ class PursuerNavigationScene0Continuous(PursuerNavigationScene0):
                 ]
             ):
                 self.pursuers['status'][0] = 'deactivated'
-                bonus = -100.
-            else:
-                distance = np.linalg.norm(self.pursuers['position'] - self.evaders['position'])
-                bonus = 10*(prev_distance - distance) - .1
+            distance = np.linalg.norm(self.pursuers['position'] - self.evaders['position'])
+            bonus = 10*(prev_distance - distance) - .1
         else:
             action = np.zeros(2)
             self.pursuers['velocity'][0] = np.zeros(2)
