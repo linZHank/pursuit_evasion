@@ -15,10 +15,10 @@ cd pursuit_evasion
 
 ### Test pursuit-evasion environment with random actions
 ```console
-python3 test_pe.py
+python3 demo_pe.py
 ```
-> There are a bunch of other test scripts. Their names all started with `test`.
-> These test scripts illustrate the basic usage of every environment.
+> There are a bunch of other demo scripts. Their names all started with `demo`.
+> The demo scripts illustrate the basic usage of every environment.
 
 ### Train a DQN controlled pursuer navigator in 1v1 env 
 ```console
