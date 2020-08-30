@@ -15,15 +15,15 @@ cd pursuit_evasion
 
 ### Test pursuit-evasion environment with random actions
 ```console
-python3 envs/pe.py
+python3 test_pe.py
 ```
+> There are a bunch of other test scripts. Their names all started with `test`.
+> These test scripts illustrate the basic usage of every environment.
 
-### Train a DQN pursuer in 1v1 env (under construction...)
+### Train a DQN controlled pursuer navigator in 1v1 env 
 ```console
-python3 train_1v1_pur_dqn.py
+python3 train_purnavs0_dqn.py
 ```
 
-### Notes
-scroll down to the bottom of each env to see an example usage
 
 
