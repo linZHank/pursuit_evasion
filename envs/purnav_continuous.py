@@ -22,7 +22,7 @@ class PursuerNavigationContinuous(PursuerNavigation):
 
     def __init__(self, resolution=(80, 80)):
         super(PursuerNavigationContinuous, self).__init__(resolution)
-        self.name = 'pursuer_navigation_scene0_discrete'
+        self.name = 'pursuer_navigation'
         self.action_space_shape = (2,)
         self.action_space_high = 2.*np.ones(self.action_space_shape)
         self.action_space_low = -self.action_space_high
@@ -39,7 +39,7 @@ class PursuerNavigationContinuous(PursuerNavigation):
             info: episode result or ''
         """
         # Check input
-        assert action.shape==(2,)
+        assert action.shape==self.action_space_shape
         action = np.clip(action, self.action_space_low, self.action_space_high)
         # Prepare
         prev_distance = np.linalg.norm(self.pursuers['position'] - self.evaders['position']) 
