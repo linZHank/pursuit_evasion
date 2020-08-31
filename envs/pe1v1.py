@@ -17,112 +17,19 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.patches import Ellipse, RegularPolygon, Circle
 from matplotlib.collections import PatchCollection
-from .pe import PursuitEvasion
+from .purnav import PursuerNavigation
 
 
-class PursuitEvasionOneVsOne(PursuitEvasion):
+class PursuitEvasionOneVsOne(PursuerNavigation):
 
     def __init__(self, resolution=(80, 80)):
-        super().__init__(resolution)
-        self.name = '1p1e_discrete'
+        super(PursuitEvasionOneVsOne, self).__init__(resolution)
+        self.name = 'pursuit_evasion_1v1_discrete'
         self.num_evaders = 1
         self.num_pursuers = 1
         self.observation_space_shape = list(resolution) + [3]
-        self.action_space_shape = ()
+        self.action_space_shape = (2,)
         self.action_reservoir = np.array([[0,1.], [0,-1.], [-1.,0], [1.,0]])  # 0: Up, 1: Down, 2: Left, 3: Right
-
-    def reset(self):
-        """
-        Reset obstacles and agents location
-        Args:
-        Return:
-            obs: map image
-        """
-        # Prepare 
-        self.step_counter = 0
-        self.evaders = dict(
-            name = ['e-0'],
-            position = np.inf*np.ones((1, 2)),
-            velocity = np.zeros((1, 2)),
-            trajectory = [],
-            status = ['deactivated'],
-        )
-        self.pursuers = dict(
-            name = ['p-0'],
-            position = np.inf*np.ones((1, 2)),
-            velocity = np.zeros((1, 2)),
-            trajectory = [],
-            status = ['deactivated'],
-        )
-        self.spawning_pool = random.uniform(
-            -self.world_length/2+.5, self.world_length/2-.5,
-            size=(2,2)
-        ) # .5 threshold to avoid spawning too close to the walls
-        obs = np.zeros((self.resolution[0], self.resolution[1], 3), dtype=np.uint8)
-
-        # Reset obstacles: you can add more shapes in the section below
-        self.num_ellipses = random.randint(1,self.max_num_ellipses+1)
-        self.num_polygons = random.randint(1,self.max_num_polygons+1)
-        self.obstacle_patches = []
-        for _ in range(self.num_ellipses):
-            ellipse = Ellipse(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), width=random.uniform(self.world_length/10, self.world_length/7), height=random.uniform(self.world_length/10, self.world_length/7), angle=random.uniform(0,360), fc='grey')
-            self.obstacle_patches.append(ellipse)
-        for _ in range(self.num_polygons):
-            reg_polygon = RegularPolygon(xy=random.uniform(-self.world_length/2, self.world_length/2, size=2), numVertices=random.randint(4,7), radius=random.uniform(self.world_length/10, self.world_length/7), orientation=random.uniform(-pi,pi), fc='grey')
-            self.obstacle_patches.append(reg_polygon)
-        self.obstacle_map = self._get_map(patch_list=self.obstacle_patches, radius=self.world_length/np.min(self.resolution)/2)
-        # Reset obstacles: you can add more shapes in the section below
-
-        # Reset Evaders #
-        for ie in range(self.num_evaders):
-            self.evaders['position'][ie] = self.spawning_pool[ie]
-            while any(
-                [
-                    self._is_occluded(self.evaders['position'][ie], radius=self.evader_radius),
-                    self._is_interfered(self.evaders['position'][ie], radius=2*self.evader_radius)
-                ]
-            ): # evaders are sneaky so that they can stay closer to each other
-                self.evaders['position'][ie] = random.uniform(-self.world_length/2+.3, self.world_length/2-.3, 2)
-        self.evaders['velocity'] = np.zeros((self.num_evaders,2))
-        self.evaders['trajectory'].append(self.evaders['position'].copy())
-        self.evaders['status'] = ['active']*self.num_evaders
-        self.spawning_pool[:self.num_evaders] = self.evaders['position'].copy()
-        ## create evader patches, 八面玲珑
-        self.evader_patches = []
-        for ie in range(self.num_evaders):
-            octagon = RegularPolygon(xy=self.evaders['position'][ie], numVertices=8, radius=self.evader_radius, fc='orangered')
-            self.evader_patches.append(octagon)
-        ## create evaders map
-        self.evader_map = self._get_map(patch_list=self.evader_patches, radius=self.evader_radius)
-        # Reset Pursuers #
-        for ip in range(self.num_pursuers):
-            self.pursuers['position'][ip] = self.spawning_pool[self.num_evaders+ip]
-            while any(
-                [
-                    self._is_occluded(self.pursuers['position'][ip], radius=self.pursuer_radius),
-                    self._is_interfered(self.pursuers['position'][ip], radius=2*self.interfere_radius)
-                ]
-            ): # pursuer has to work safely so that they don't want to start too close to others
-                self.pursuers['position'][ip] = random.uniform(-self.world_length/2+.3, self.world_length/2-.3, 2)
-        self.pursuers['velocity'] = np.zeros((self.num_pursuers,2))
-        self.pursuers['trajectory'].append(self.pursuers['position'].copy())
-        self.pursuers['status'] = ['active']*self.num_pursuers
-        self.spawning_pool[-self.num_pursuers:] = self.pursuers['position'].copy()
-        ## create pursuer patches, 圆滑世故
-        self.pursuer_patches = []
-        for ip in range(self.num_pursuers):
-            circle = Circle(xy=self.pursuers['position'][ip], radius=self.pursuer_radius, fc='deepskyblue')
-            self.pursuer_patches.append(circle)
-        ## create pursuers map
-        self.pursuer_map = self._get_map(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
-        # Create map in the order of RGB 
-        self.map[:,:,0] = 0.5*np.transpose(self.evader_map)
-        self.map[:,:,1] = 0.5*np.transpose(self.obstacle_map)
-        self.map[:,:,2] = 0.5*np.transpose(self.pursuer_map)
-        # Get obs
-        obs = self.map.copy()
-
-        return obs
 
     def step(self, action_indices):
         """
@@ -136,22 +43,26 @@ class PursuitEvasionOneVsOne(PursuitEvasion):
             info: episode result or ''
         """
         # Check input and convert index into actual force
-        assert action_indices.shape == (self.num_evaders+self.num_pursuers,)
-        assert all(action_indices>=0) and all(action_indices<self.action_reservoir.shape[0])
-        actions = np.zeros([self.num_evaders+self.num_pursuers, 2])
-        for i in range(actions.shape[0]):
-            actions[i] = self.action_reservoir[action_indices[i]]
-        # Default reward, done, info
+        assert action_indices.shape == self.action_space_shape
+        assert all(action_indices>=0) 
+        assert all(action_indices<self.action_reservoir.shape[0])
+        action = np.zeros((self.num_evaders+self.num_pursuers, 2))
+        for i,v in enumerate(action_indices):
+            action[i] = self.action_reservoir[v]
+        action = np.clip(action, self.action_space_low, self.action_space_high)
+        # Prepare
+        prev_distance = np.linalg.norm(self.pursuers['position'] - self.evaders['position']) 
         bonus = np.zeros(self.num_evaders+self.num_pursuers) # add bonus when key event detected
         reward = np.zeros(self.num_evaders + self.num_pursuers)
         done = np.array([False]*(self.num_evaders + self.num_pursuers))
         info = ''
-        # Limit input
-        actions = np.clip(actions, self.action_space_low, self.action_space_high)
+        obs = np.zeros((self.resolution[0], self.resolution[1], 3), dtype=np.uint8)
+        obs[:,:,1] = self.image[:,:,1] # obstacle image
         # Step evaders
+        obs[:,:,0] = self.image[:,:,0]
         for ie in range(self.num_evaders):
             if self.evaders['status'][ie] == 'active':
-                d_vel = (actions[ie]/self.evader_mass - self.damping*self.evaders['velocity'][ie])/self.rate
+                d_vel = (action[ie]/self.evader_mass - self.damping*self.evaders['velocity'][ie])/self.rate
                 self.evaders['velocity'][ie] += d_vel
                 self.evaders['velocity'][ie] = np.clip(self.evaders['velocity'][ie], -self.evader_max_speed, self.evader_max_speed)
                 d_pos = self.evaders['velocity'][ie]/self.rate
@@ -163,11 +74,11 @@ class PursuitEvasionOneVsOne(PursuitEvasion):
                     ]
                 ):
                     self.evaders['status'][ie] = 'deactivated'
-                    bonus[ie] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                    bonus[ie] = -100. # -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
                 else:
-                    bonus[ie] = -np.linalg.norm(actions[ie])/10.
+                    bonus[ie] = .1 # -np.linalg.norm(action[ie])/10.
             else:
-                actions[ie] = np.zeros(2)
+                action[ie] = np.zeros(2)
                 self.evaders['velocity'][ie] = np.zeros(2)
         ## record evaders trajectory
         self.evaders['trajectory'].append(self.evaders['position'].copy())
@@ -175,15 +86,21 @@ class PursuitEvasionOneVsOne(PursuitEvasion):
         self.evader_patches = []
         for ie in range(self.num_evaders):
             if self.evaders['status'][ie] == 'active':
-                octagon = RegularPolygon(xy=self.evaders['position'][ie], numVertices=8, radius=self.evader_radius, fc='orangered')
+                octagon = RegularPolygon(
+                    xy=self.evaders['position'][ie], 
+                    numVertices=8, 
+                    radius=self.evader_radius, 
+                    fc='orangered'
+                )
                 self.evader_patches.append(octagon)
-        ## create evader map
-        self.evader_map = self._get_map(patch_list=self.evader_patches, radius=self.evader_radius)
+        obs[:,:,0] = 255*self._get_image(patch_list=self.evader_patches, radius=self.evader_radius) 
+        ## Create map image, obstacle channel no need to change 
+        self.image[:,:,0] = obs[:,:,0] # B: pursuer channel
 
-        # Step pursuers
+        # Step pursuer
         for ip in range(self.num_pursuers):
             if self.pursuers['status'][ip] == 'active':
-                d_vel = (actions[-self.num_pursuers+ip]/self.pursuer_mass  - self.damping*self.pursuers['velocity'][ip])/self.rate
+                d_vel = (action[-self.num_pursuers+ip]/self.pursuer_mass  - self.damping*self.pursuers['velocity'][ip])/self.rate
                 self.pursuers['velocity'][ip] += d_vel
                 self.pursuers['velocity'][ip] = np.clip(self.pursuers['velocity'][ip], -self.pursuer_max_speed, self.pursuer_max_speed)
                 d_pos = self.pursuers['velocity'][ip]/self.rate
@@ -195,11 +112,11 @@ class PursuitEvasionOneVsOne(PursuitEvasion):
                     ]
                 ):
                     self.pursuers['status'][ip] = 'deactivated'
-                    bonus[-self.num_pursuers+ip] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                    bonus[-self.num_pursuers+ip] = -100. # -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
                 else:
-                    bonus[-self.num_pursuers+ip] = -np.linalg.norm(actions[-self.num_pursuers+ip])/10.
-            else:
-                actions[-self.num_pursuers+ip] = np.zeros(2)
+                    bonus[-self.num_pursuers+ip] = -.1 # -np.linalg.norm(action[-self.num_pursuers+ip])/10.
+            else: # make sure deactivated pursuers not moving
+                action[-self.num_pursuers+ip] = np.zeros(2)
                 self.pursuers['velocity'][ip] = np.zeros(2)
             ## detect captures
             if self.pursuers['status'][ip] == 'active': # status updated, check status again
@@ -207,60 +124,39 @@ class PursuitEvasionOneVsOne(PursuitEvasion):
                     if self.evaders['status'][ie] =='active':
                         if np.linalg.norm(self.pursuers['position'][ip] - self.evaders['position'][ie]) <= self.interfere_radius:
                             self.evaders['status'][ie] = 'deactivated'
-                            bonus[ie] = -np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
-                            bonus[-self.num_pursuers+ip] = np.sqrt(2*self.action_space_high**2)*self.max_episode_steps/10.
+                            bonus[ie] = -100. 
+                            bonus[-self.num_pursuers+ip] = 100. 
         ## record pursuers trajectory
         self.pursuers['trajectory'].append(self.pursuers['position'].copy())
         ## create pursuer patches, 圆滑世故
         self.pursuer_patches = []
         for ip in range(self.num_pursuers):
             if self.pursuers['status'][ip] == 'active':
-                circle = Circle(xy=self.pursuers['position'][ip], radius=self.pursuer_radius, fc='deepskyblue')
+                circle = Circle(
+                    xy=self.pursuers['position'][ip], 
+                    radius=self.pursuer_radius, 
+                    fc='deepskyblue'
+                )
                 self.pursuer_patches.append(circle)
-        ## create pursuer map
-        self.pursuer_map = self._get_map(patch_list=self.pursuer_patches, radius=self.pursuer_radius)
-        # Combine maps in the order of RGB 
-        self.map[:,:,0] = 0.5*np.transpose(self.evader_map) # R
-        self.map[:,:,1] = 0.5*np.transpose(self.obstacle_map) # G
-        self.map[:,:,2] = 0.5*np.transpose(self.pursuer_map) # B
-        # Output
+        obs[:,:,2] = 255*self._get_image(patch_list=self.pursuer_patches, radius=self.pursuer_radius) 
+        ## Create map image, obstacle channel no need to change 
+        self.image[:,:,2] = obs[:,:,2] # B: pursuer channel
+
+        # Finish step
         self.step_counter += 1
-        ## obs
-        obs = self.map.copy()
         ## reward
         reward += bonus.copy()
         ## done if deactivated
         done = np.array([s=='deactivated' for s in self.evaders['status']] + [s=='deactivated' for s in self.pursuers['status']])
-        if self.step_counter == self.max_episode_steps:
-            # done = np.array([True]*(self.num_evaders + self.num_pursuers))
-            info = "timeup"
+        if all(done[:self.num_evaders]):
+            done[:] = True
         ## info
+        if self.step_counter == self.max_episode_steps:
+            info = "Timeup"
         if all(done[:self.num_evaders]): # pursuers win
             info = "All evaders deceased"
         if all(done[-self.num_pursuers:]): # evaders win
             info = "All pursuers deceased"
 
         return obs, reward, done, info
-
-
-# usage example
-if __name__=='__main__':
-    env = PursuitEvasionOneVsOneDiscrete()
-    for ep in range(4):
-        obs = env.reset()
-        for st in range(env.max_episode_steps):
-            env.render(pause=1./env.rate)
-            ia= np.random.randint(env.action_reservoir.shape[0], size=env.num_evaders+env.num_pursuers)
-            obs, rew, done, info = env.step(ia)
-            img = obs[:,:,[2,1,0]]
-            cv2.imshow('map', cv2.resize(img, (360, 360)))
-            if cv2.waitKey(25) & 0xFF == ord('q'):
-                break
-            print("\nevaders_pos: {} \npursuers_pos: {} \nreward: {} \ndone: {}".format(env.evaders['position'], env.pursuers['position'], rew, done))
-            if info:
-                print(info)
-                time.sleep(2)
-                break
-    cv2.destroyAllWindows()
-            
 
