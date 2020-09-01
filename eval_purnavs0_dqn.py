@@ -19,7 +19,7 @@ if __name__=='__main__':
         dim_obs=[8], 
         num_act=env.action_reservoir.shape[0], 
     ) 
-    model_path = './saved_models/pursuer_navigation_scene0_discrete/dqn/9094'
+    model_path = './saved_models/pursuer_navigation_scene0_discrete/dqn/30000'
     agent.q.q_net = tf.keras.models.load_model(model_path)
     agent.epsilon = 0.
 
